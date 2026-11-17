@@ -378,7 +378,7 @@ describe("POST /api/execute — stageId-based happy path", () => {
     const result = body["result"] as Record<string, unknown>;
     const receipt = body["receipt"] as Record<string, unknown>;
     assert.equal(result["kind"], "applied");
-    assert.equal(receipt["labNote"], "local lab, no hosted evaluation performed");
+    assert.equal(receipt["labNote"], "local model effect; no hosted call during execution");
     assert.ok(typeof receipt["revisionAfter"] === "number");
     assert.ok((receipt["revisionAfter"] as number) > 1);
   });
@@ -771,7 +771,7 @@ describe("WorkspaceService unit", () => {
     const execSnap = await svc.execute("loop-id", action);
     assert.equal(execSnap.result.kind, "applied");
     assert.ok(execSnap.receipt !== null);
-    assert.equal(execSnap.receipt!.labNote, "local lab, no hosted evaluation performed");
+    assert.equal(execSnap.receipt!.labNote, "local model effect; no hosted call during execution");
     svc.close();
   });
 

@@ -48,6 +48,13 @@
       Start lab session
     </button>
     <div id="setup-error" role="alert" style="font-size:0.75rem;color:var(--red);min-height:1.2em;"></div>
+    <div style="margin-top:1rem;padding-top:0.75rem;border-top:1px solid var(--ink-border);font-size:0.75rem;color:var(--warm-dim);">
+      Separate lab surface:
+      <a href="/rig/" style="color:var(--teal);text-decoration:underline;" target="_blank" rel="noopener">
+        Measured worker rig ↗
+      </a>
+      (standalone manual process lab with managed SQLite handles; zero hosted calls).
+    </div>
   </div>
 </div>
 
@@ -56,18 +63,40 @@
 
   <!-- Header -->
   <header id="header" role="banner">
-    <h1>Blackout — Incident Recovery Lab</h1>
-    <span id="scenario-badge" class="scenario-badge" aria-label="Active scenario"></span>
-    <span id="revision-badge" class="revision-badge" aria-label="Current revision and tick"></span>
-    <span id="status-badge" class="scenario-badge" style="border-color:var(--teal-dim);background:var(--teal-bg);color:var(--teal);" aria-label="Scenario status">running</span>
-    <button class="btn btn-secondary" id="new-session-btn" type="button"
-            aria-label="Start a new lab session (resets all state)">New session</button>
+    <div class="header-main">
+      <h1>Blackout — Incident Recovery Lab</h1>
+      <span class="header-context">Recovery actions can expire while the incident changes.</span>
+    </div>
+    <div class="header-controls">
+      <a href="/rig/" class="btn btn-secondary" id="rig-nav-btn" target="_blank" rel="noopener"
+         aria-label="Open Measured worker rig (separate manual process lab, zero hosted calls)">
+        Measured worker rig ↗
+      </a>
+      <span id="scenario-badge" class="scenario-badge" aria-label="Active scenario"></span>
+      <span id="revision-badge" class="revision-badge" aria-label="Current revision and tick"></span>
+      <span id="status-badge" class="scenario-badge" style="border-color:var(--teal-dim);background:var(--teal-bg);color:var(--teal);" aria-label="Scenario status">running</span>
+      <button class="btn btn-secondary" id="new-session-btn" type="button"
+              aria-label="Start a new lab session (resets current run)">New session</button>
+    </div>
   </header>
+
+  <!-- Workflow step progression bar -->
+  <nav class="workflow-steps" aria-label="Recovery workflow steps">
+    <span class="step step-observe active" id="step-observe"><span class="step-num">1</span> Observe</span>
+    <span class="step-arrow" aria-hidden="true">→</span>
+    <span class="step step-review" id="step-review"><span class="step-num">2</span> Review</span>
+    <span class="step-arrow" aria-hidden="true">→</span>
+    <span class="step step-recheck" id="step-recheck"><span class="step-num">3</span> Recheck</span>
+    <span class="step-arrow" aria-hidden="true">→</span>
+    <span class="step step-apply" id="step-apply"><span class="step-num">4</span> Apply</span>
+    <span class="step-arrow" aria-hidden="true">→</span>
+    <span class="step step-measure" id="step-measure"><span class="step-num">5</span> Measure</span>
+  </nav>
 
   <!-- Main workspace -->
   <main id="main" aria-label="Lab workspace">
 
-    <!-- Left pane: topology + metrics -->
+    <!-- Left pane: topology + metrics + observation history -->
     <section id="pane-left" aria-label="Service topology and metrics">
 
       <!-- Topology -->
@@ -80,6 +109,27 @@
       <div class="panel" id="metrics-panel">
         <div class="panel-title">Operational metrics</div>
         <div id="metrics-grid" class="metrics-grid" aria-live="polite" aria-atomic="true"></div>
+      </div>
+
+      <!-- Chronological Observation History Charts -->
+      <div class="panel" id="history-panel">
+        <div class="panel-title">Observation history (chronological snapshots)</div>
+        <div class="history-charts-wrap">
+          <div class="chart-card">
+            <div class="chart-header">
+              <span class="chart-label" id="backlog-chart-title">Backlog</span>
+              <span class="chart-unit" id="backlog-chart-unit">msgs</span>
+            </div>
+            <div id="backlog-chart" class="chart-viewport" role="img" aria-label="Chronological backlog history line chart"></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-header">
+              <span class="chart-label">Error rate</span>
+              <span class="chart-unit">%</span>
+            </div>
+            <div id="error-chart" class="chart-viewport" role="img" aria-label="Chronological error rate history line chart"></div>
+          </div>
+        </div>
       </div>
 
       <!-- State digest -->
@@ -128,6 +178,31 @@
         <div id="proposals-list" role="list" aria-label="Candidate proposals"></div>
       </div>
 
+      <!-- DeltaX Evaluate slot -->
+      <div class="panel" id="evaluate-panel">
+        <div class="panel-title">DeltaX Evaluate — Hosted Review</div>
+        <div class="evaluate-card">
+          <div class="evaluate-header">
+            <span id="evaluate-status-badge" class="eval-badge eval-unconfigured">Local demo</span>
+            <span id="evaluate-allowance" class="eval-allowance" aria-label="Evaluation budget allowance"></span>
+          </div>
+          <div id="evaluate-body" class="evaluate-body">
+            <div class="uc-slot">
+              Local demo (fictional lab mode) — no hosted review configured. Actions stage directly with operator confirmation.
+            </div>
+          </div>
+          <div style="margin-top:0.6rem;">
+            <button class="btn btn-primary" id="evaluate-btn" type="button" style="display:none;"
+                    aria-label="Request hosted review of eligible candidate proposals">
+              Request hosted review
+            </button>
+          </div>
+          <div style="font-size:0.68rem;color:var(--warm-dim);margin-top:0.45rem;">
+            Separate surface: <a href="/rig/" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:underline;">Measured worker rig ↗</a> is an explicit separate manual lab (zero hosted calls), not a fallback from refusal.
+          </div>
+        </div>
+      </div>
+
       <!-- Staged action -->
       <div class="panel" id="staging-panel">
         <div class="panel-title">Staged action</div>
@@ -139,23 +214,10 @@
         <div style="display:flex;gap:0.5rem;margin-top:0.75rem;flex-wrap:wrap;">
           <button class="btn btn-primary" id="execute-btn" type="button" disabled
                   aria-label="Confirm and apply the staged action against current state">
-            Confirm and apply action
+            Confirm and apply lab action
           </button>
         </div>
         <div id="exec-result" aria-live="assertive" aria-atomic="true"></div>
-      </div>
-
-      <!-- DeltaX Evaluate slot -->
-      <div class="panel">
-        <div class="panel-title">DeltaX Evaluate</div>
-        <div class="evaluate-card">
-          <div class="uc-label">Hosted evaluation — not configured in M2</div>
-          <div class="uc-slot">
-            Status: <strong style="color:var(--warm-dim)">UNCONFIGURED</strong><br />
-            This slot is reserved for the M3 live Evaluate integration.
-            No hosted calls are made in local lab mode.
-          </div>
-        </div>
       </div>
 
       <!-- Evidence export -->
@@ -163,7 +225,7 @@
         <div class="panel-title">Evidence export</div>
         <p style="font-size:0.75rem;color:var(--warm-dim);margin-bottom:0.6rem;">
           Downloads a session-scoped JSON bundle. Every event and proposal source
-          is labelled. Lab note confirms no hosted evaluation performed.
+          is labelled. Captures telemetry snapshots and review records.
         </p>
         <a id="evidence-link" class="btn btn-secondary" href="/api/evidence"
            download="blackout-evidence.json"

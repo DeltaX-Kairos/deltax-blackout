@@ -311,7 +311,7 @@ test("predicted-vs-observed — fields are independent, not copies of each other
   assert.notStrictEqual(receipt.predictedEffects, receipt.observedEffects);
 
   // The labNote must be correct.
-  assert.equal(receipt.labNote, "local lab, no hosted evaluation performed");
+  assert.equal(receipt.labNote, "local model effect; no hosted call during execution");
 });
 
 // ─── Digest properties ────────────────────────────────────────────────────────

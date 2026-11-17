@@ -1,0 +1,13 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "verified-session-baseline",
+      "trigger": "SessionStart",
+      "action": {
+        "type": "command",
+        "command": "node node_modules/typescript/bin/tsc && node --test dist/tests/invariants.test.js && node -e \"process.stdout.write('BLACKOUT_SESSION_CHECK_PASSED\\n')\""
+      }
+    }
+  ]
+}

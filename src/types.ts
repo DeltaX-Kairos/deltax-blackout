@@ -236,9 +236,9 @@ export interface LabReceipt {
   /** Actual observed metric values from the resulting ScenarioState. Independently populated. */
   observedEffects: ObservedEffects;
   /**
-   * Always "local lab, no hosted evaluation performed" for M1.
+   * Describes the execution boundary; any hosted review is recorded separately.
    */
-  labNote: "local lab, no hosted evaluation performed";
+  labNote: "local model effect; no hosted call during execution";
 }
 
 // ─── Execution results ───────────────────────────────────────────────────────

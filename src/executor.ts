@@ -262,7 +262,7 @@ export function executeAction(
     digestAfter: newBasisDigest,
     predictedEffects,
     observedEffects,
-    labNote: "local lab, no hosted evaluation performed",
+    labNote: "local model effect; no hosted call during execution",
   };
 
   // Mark consumed.

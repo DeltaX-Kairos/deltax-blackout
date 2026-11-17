@@ -37,3 +37,13 @@ Kiro session `sess_3f0cfc0b-f956-422f-bbb1-b9dc8903a42c` ended with native `Usag
 Antigravity fallback: initial Gemini4ArgonHigh session reported its individual model quota before source edits (reset75h54m), no upgrade attempted. Switched to the available standard Gemini3.8FlashHigh coding model with sandbox and exact workspace trust. The CLI reports pre-existing invalid terminal permission-rule syntax; this project will not alter global permissions. File tools are used for source; Codex runs verification commands. No engine source or credentials are part of the assignment.
 
 Antigravity Gemini3.8FlashHigh authored the final resource projection guard, independent executor feasibility check and node:test capacity regressions. Codex ran the isolated compiler and120tests, all passed, then updated the existing HTTP integration case to choose a feasible throttle after rejecting fresh excess scaling. No hosted calls were made; unfinished SDK files remain excluded from that isolated check.
+
+## Final reconciled state — November 17, 2026
+
+The earlier unconfigured/planned paragraphs above describe their dated checkpoints. Hosted Evaluate and the measured rig are now implemented and independently verified. The complete tree passes290tests. Four authorized local hosted reviews completed, including the two receipts in the final147.14-second browser capture. No simulated provider result is labelled hosted.
+
+Antigravity completed the hosted SDK/controller, resource guard, real process rig, MCP observer and release configuration after Kiro quota exhaustion. Its build conversations were `89baccec-9a0b-4815-a3e4-22a2f735883a`, `73b3a30a-977e-4572-9ef5-e6b2fd52b54b`, and `324b5f58-2938-4bd5-a08e-cf673d464ae8`. Codex coordinated exact assignments, ran all final commands and applied the narrow corrections listed in BUILDER-REPORT.md.
+
+Native PostFileSave events completed in the workspace streams. The complementary SessionStart baseline hook also emitted a native completed event in Kiro session `sess_0b5141e2-8679-40af-8fa6-fb5232acd9fb`, before the known monthly quota failure. The source configuration and independent passing invariant tests are separate evidence; a hook status alone is not the complete test report.
+
+The project MCP configuration is recognized by `kiro-cli mcp status --name blackout-observer`. Nine official-client stdio tests actually list/call its read-only tools and check error/cleanup behavior. These tools expose a labelled recorded seed42 model fixture, not arbitrary host access. A native Kiro model tool invocation was unavailable after quota exhaustion and is not claimed. The final video states the actual primary and fallback contributions.

@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Measured Worker Rig — Blackout Incident Recovery Lab</title>
+  <link rel="stylesheet" href="/rig/rig.css" />
+</head>
+<body>
+
+<!-- Accessible live region for screen reader announcements -->
+<div id="announce" aria-live="polite" aria-atomic="true"></div>
+
+<div id="rig-app" class="rig-layout">
+
+  <!-- Header -->
+  <header class="rig-header" role="banner">
+    <div class="header-nav">
+      <a href="/" class="back-link" aria-label="Back to incident model">← Back to incident model</a>
+      <span class="source-tag">Measured Lab Environment</span>
+    </div>
+    <div class="header-main">
+      <h1>Measured worker rig</h1>
+      <p class="source-subtext">
+        Measured process telemetry · Fictional workload · Managed SQLite handles · Zero hosted calls
+      </p>
+    </div>
+    <div class="header-controls">
+      <button id="start-rig-btn" class="btn btn-primary" type="button">Start 24-job rig</button>
+      <button id="close-rig-btn" class="btn btn-danger" type="button" disabled>Close rig</button>
+    </div>
+  </header>
+
+  <!-- Notice & Status Banner -->
+  <section class="banner-strip" aria-label="System status">
+    <div class="status-indicator">
+      <span class="label">Rig Status:</span>
+      <span id="rig-status-badge" class="badge badge-idle">idle</span>
+    </div>
+    <div class="status-indicator">
+      <span class="label">Time to Expiry:</span>
+      <span id="rig-expiry-display" class="mono">—</span>
+    </div>
+    <div class="status-indicator">
+      <span class="label">Revision:</span>
+      <span id="rig-revision" class="mono">0</span>
+    </div>
+    <div class="status-indicator">
+      <span class="label">Basis Digest:</span>
+      <span id="rig-digest" class="mono truncate" title="No active digest">—</span>
+    </div>
+  </section>
+
+  <!-- Main Content Grid -->
+  <main class="rig-main-grid" role="main">
+
+    <!-- Left Column: Metrics & Scaffold Guide -->
+    <section class="grid-col" aria-label="Telemetry and Guided Sequence">
+
+      <!-- Queue Telemetry Card -->
+      <div class="card">
+        <h2 class="card-title">Durable Queue Telemetry</h2>
+        <p class="card-desc">Measured parent SQLite queue counters (24 fixed fictional batch jobs admitted).</p>
+        <div class="metrics-grid">
+          <div class="metric-box">
+            <span class="metric-label">Pending</span>
+            <span id="cnt-pending" class="metric-val mono">—</span>
+          </div>
+          <div class="metric-box">
+            <span class="metric-label">In-Flight</span>
+            <span id="cnt-inflight" class="metric-val mono">—</span>
+          </div>
+          <div class="metric-box">
+            <span class="metric-label">Completed</span>
+            <span id="cnt-completed" class="metric-val mono text-teal">—</span>
+          </div>
+          <div class="metric-box">
+            <span class="metric-label">Unknown</span>
+            <span id="cnt-unknown" class="metric-val mono text-amber">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Handle Budget & Worker Processes Card -->
+      <div class="card">
+        <h2 class="card-title">Managed SQLite Handle Budget</h2>
+        <p class="card-desc">Measured parent handle pool plus verified live child worker handles (hard limit: 100).</p>
+        <div class="meter-container">
+          <div class="meter-bar-track">
+            <div id="handle-meter-fill" class="meter-bar-fill" style="width: 0%;"></div>
+          </div>
+          <div class="meter-labels">
+            <span>Used: <strong id="cnt-handles" class="mono">0</strong> handles</span>
+            <span>Budget: <strong class="mono">100 max</strong></span>
+          </div>
+        </div>
+
+        <div class="metrics-grid" style="margin-top: 1rem;">
+          <div class="metric-box">
+            <span class="metric-label">Active Workers</span>
+            <span id="cnt-active-workers" class="metric-val mono">—</span>
+          </div>
+          <div class="metric-box">
+            <span class="metric-label">Paused Workers</span>
+            <span id="cnt-paused-workers" class="metric-val mono">—</span>
+          </div>
+          <div class="metric-box">
+            <span class="metric-label">Parent Handles</span>
+            <span id="cnt-parent-handles" class="metric-val mono">—</span>
+          </div>
+          <div class="metric-box">
+            <span class="metric-label">Worker Handles</span>
+            <span id="cnt-worker-handles" class="metric-val mono">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Guided Incident Recovery Scaffold Card -->
+      <div class="card guide-card">
+        <h2 class="card-title">Guided Recovery Scaffold</h2>
+        <ol class="scaffold-steps">
+          <li><strong>Start rig:</strong> 1 paused worker, 48 handles (45 parent + 3 worker). 24 pending jobs.</li>
+          <li><strong>Stage scaling:</strong> Scale 1 to 4 workers projects 57 handles (within 100 budget).</li>
+          <li><strong>Inject pressure:</strong> Parent reserves 90 pool handles (91 parent + 3 worker = 94 handles).</li>
+          <li><strong>Stale rejection:</strong> Applying staged scale is rejected (basis changed + would require 103 handles).</li>
+          <li><strong>Re-propose:</strong> Scale to 4 now blocked (needs 103/100). Resume worker-1 is feasible at 94 handles.</li>
+          <li><strong>Apply resume:</strong> Worker-1 unpauses and drains all 24 jobs without adding handles.</li>
+        </ol>
+        <div style="margin-top: 0.75rem;">
+          <button id="inject-pressure-btn" class="btn btn-secondary" type="button" disabled>
+            Inject Database Pressure (94 handles)
+          </button>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Right Column: Proposals, Staging, Application, and Evidence -->
+    <section class="grid-col" aria-label="Recovery Actions and Review">
+
+      <!-- Candidate Proposals Card -->
+      <div class="card">
+        <div class="card-header-row">
+          <h2 class="card-title">Candidate Proposals</h2>
+          <button id="refresh-proposals-btn" class="btn btn-secondary btn-sm" type="button" disabled>
+            Refresh
+          </button>
+        </div>
+        <p class="card-desc">Proposals generated from current measured state and handle projection.</p>
+        <div id="proposals-list" class="proposals-container" role="radiogroup" aria-label="Available proposals">
+          <div class="empty-state">Start rig to generate candidate proposals.</div>
+        </div>
+      </div>
+
+      <!-- Inspect & Staging Card -->
+      <div class="card">
+        <h2 class="card-title">Inspect & Stage Action</h2>
+        <div id="inspect-panel" class="inspect-body">
+          <div class="empty-state">Select a proposal above to inspect details and resource projection.</div>
+        </div>
+        <div style="margin-top: 1rem;">
+          <button id="stage-btn" class="btn btn-secondary" type="button" disabled>
+            Stage Selected Proposal
+          </button>
+        </div>
+      </div>
+
+      <!-- Human Staging Review & Application Card -->
+      <div class="card staging-card">
+        <h2 class="card-title">Human Confirmation & Execution</h2>
+        <p class="card-desc">Review exact staged effect before manual confirmation. No auto-execution.</p>
+
+        <div id="staged-details" class="staged-body">
+          <div class="empty-state">No action currently staged.</div>
+        </div>
+
+        <div class="confirmation-box" style="margin-top: 1rem;">
+          <label class="checkbox-label" for="confirm-checkbox">
+            <input type="checkbox" id="confirm-checkbox" disabled />
+            <span>I confirm this measured local process action against the current basis</span>
+          </label>
+          <button id="apply-btn" class="btn btn-primary" type="button" disabled style="margin-top: 0.75rem;">
+            Confirm and apply lab action
+          </button>
+        </div>
+
+        <div id="apply-feedback" class="feedback-banner" aria-live="assertive" hidden></div>
+      </div>
+
+      <!-- Download Evidence Card -->
+      <div class="card">
+        <h2 class="card-title">Evidence Export</h2>
+        <p class="card-desc">
+          Download the measured snapshot, worker details, queue totals and applied-action receipts.
+        </p>
+        <button id="download-evidence-btn" class="btn btn-secondary" type="button" disabled>
+          Download JSON Evidence Bundle
+        </button>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Chronological Observation History Panel -->
+  <section class="rig-history-panel" aria-label="Chronological Observation History">
+    <div class="history-header">
+      <h2 class="card-title">Observation History Log</h2>
+      <span class="source-tag">Bounded History (last 50 snapshots)</span>
+    </div>
+    <div class="table-scroll">
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>Rev</th>
+            <th>Status</th>
+            <th>Basis Digest</th>
+            <th>Workers (A/P)</th>
+            <th>Pending</th>
+            <th>InFlight</th>
+            <th>Completed</th>
+            <th>Handles</th>
+          </tr>
+        </thead>
+        <tbody id="history-tbody">
+          <tr><td colspan="8" class="text-center">No observation history recorded yet.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Footer / Status Bar -->
+  <footer class="rig-footer" role="status" aria-live="polite">
+    <span id="footer-status">Ready.</span>
+  </footer>
+
+</div>
+
+<script src="/rig/rig.js"></script>
+</body>
+</html>

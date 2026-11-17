@@ -1,0 +1,272 @@
+{
+  "schema": "blackout-recorded-model-evidence-v1",
+  "sourceLabel": "recorded deterministic model fixture; no hosted evaluation; not current browser state",
+  "scenarioName": "queue-storm",
+  "seed": 42,
+  "exportedAt": "2026-11-17T21:15:15.157Z",
+  "currentState": {
+    "scenarioId": "queue-storm",
+    "tick": 3,
+    "revision": 6,
+    "status": "running",
+    "operationalState": {
+      "kind": "queue-storm",
+      "arrivalRatePerTick": 120,
+      "queueDepth": 4615,
+      "workerCount": 4,
+      "ingestionRateCap": 60,
+      "errorRate": 0.3586,
+      "dbConnectionCount": 94
+    },
+    "tickLimit": 100,
+    "basisDigest": "6acf0bc9eb5ad84d347ce549ee2873819f68bf010399f95bc21690e4cfdcd93c"
+  },
+  "stateHistory": [
+    {
+      "scenarioId": "queue-storm",
+      "tick": 0,
+      "revision": 1,
+      "status": "running",
+      "operationalState": {
+        "kind": "queue-storm",
+        "arrivalRatePerTick": 120,
+        "queueDepth": 4800,
+        "workerCount": 4,
+        "ingestionRateCap": null,
+        "errorRate": 0.42,
+        "dbConnectionCount": 48
+      },
+      "tickLimit": 100,
+      "basisDigest": "fd5805ffbfc0f072355d9a9c672aabc4e40b10c45f62551cef97005d1df0fe59"
+    },
+    {
+      "scenarioId": "queue-storm",
+      "tick": 0,
+      "revision": 2,
+      "status": "running",
+      "operationalState": {
+        "kind": "queue-storm",
+        "arrivalRatePerTick": 120,
+        "queueDepth": 4800,
+        "workerCount": 4,
+        "ingestionRateCap": null,
+        "errorRate": 0.42,
+        "dbConnectionCount": 94
+      },
+      "tickLimit": 100,
+      "basisDigest": "34a7414e86724d477f0a1cce7b1ab7d381c84b192b67c8f2b567d753e882f624"
+    },
+    {
+      "scenarioId": "queue-storm",
+      "tick": 0,
+      "revision": 3,
+      "status": "running",
+      "operationalState": {
+        "kind": "queue-storm",
+        "arrivalRatePerTick": 120,
+        "queueDepth": 4800,
+        "workerCount": 4,
+        "ingestionRateCap": 60,
+        "errorRate": 0.42,
+        "dbConnectionCount": 94
+      },
+      "tickLimit": 100,
+      "basisDigest": "3723497444c1f3c77b1ac0b96f7e505ed9853140c65ae331ea30ce01674357f7"
+    },
+    {
+      "scenarioId": "queue-storm",
+      "tick": 1,
+      "revision": 4,
+      "status": "running",
+      "operationalState": {
+        "kind": "queue-storm",
+        "arrivalRatePerTick": 120,
+        "queueDepth": 4733,
+        "workerCount": 4,
+        "ingestionRateCap": 60,
+        "errorRate": 0.3984,
+        "dbConnectionCount": 94
+      },
+      "tickLimit": 100,
+      "basisDigest": "9ad3415331267169e6e3c6e885c19a38e713f91dfabed77cb77b1ae524b1dad3"
+    },
+    {
+      "scenarioId": "queue-storm",
+      "tick": 2,
+      "revision": 5,
+      "status": "running",
+      "operationalState": {
+        "kind": "queue-storm",
+        "arrivalRatePerTick": 120,
+        "queueDepth": 4668,
+        "workerCount": 4,
+        "ingestionRateCap": 60,
+        "errorRate": 0.3779,
+        "dbConnectionCount": 94
+      },
+      "tickLimit": 100,
+      "basisDigest": "e8058e6e9905e9d4ab10a3d9b4d8964d5dec1eec47510aee7d587767c5a1f6c1"
+    },
+    {
+      "scenarioId": "queue-storm",
+      "tick": 3,
+      "revision": 6,
+      "status": "running",
+      "operationalState": {
+        "kind": "queue-storm",
+        "arrivalRatePerTick": 120,
+        "queueDepth": 4615,
+        "workerCount": 4,
+        "ingestionRateCap": 60,
+        "errorRate": 0.3586,
+        "dbConnectionCount": 94
+      },
+      "tickLimit": 100,
+      "basisDigest": "6acf0bc9eb5ad84d347ce549ee2873819f68bf010399f95bc21690e4cfdcd93c"
+    }
+  ],
+  "actionReceipts": [
+    {
+      "actionId": "act-prop-qs-throttle-2-r2",
+      "revisionBefore": 2,
+      "digestBefore": "34a7414e86724d477f0a1cce7b1ab7d381c84b192b67c8f2b567d753e882f624",
+      "appliedActionDescription": "throttle-queue (proposal: prop-qs-throttle-2)",
+      "revisionAfter": 3,
+      "digestAfter": "3723497444c1f3c77b1ac0b96f7e505ed9853140c65ae331ea30ce01674357f7",
+      "predictedEffects": {
+        "ingestionRateCap": 60,
+        "queueDepth": 3360,
+        "errorRate": 0.25,
+        "workerCount": 4
+      },
+      "observedEffects": {
+        "ingestionRateCap": 60
+      },
+      "labNote": "local lab, no hosted evaluation performed"
+    }
+  ],
+  "events": [
+    {
+      "eventId": "evt-scenariostarted-t0-0",
+      "kind": "ScenarioStarted",
+      "tick": 0,
+      "revision": 1,
+      "basisDigest": "fd5805ffbfc0f072355d9a9c672aabc4e40b10c45f62551cef97005d1df0fe59",
+      "scenarioId": "queue-storm",
+      "seed": 42
+    },
+    {
+      "eventId": "evt-proposalcreated-t0-1",
+      "kind": "ProposalCreated",
+      "tick": 0,
+      "revision": 1,
+      "basisDigest": "fd5805ffbfc0f072355d9a9c672aabc4e40b10c45f62551cef97005d1df0fe59",
+      "proposalId": "prop-qs-scale-1",
+      "source": "scripted"
+    },
+    {
+      "eventId": "evt-proposalcreated-t0-2",
+      "kind": "ProposalCreated",
+      "tick": 0,
+      "revision": 1,
+      "basisDigest": "fd5805ffbfc0f072355d9a9c672aabc4e40b10c45f62551cef97005d1df0fe59",
+      "proposalId": "prop-qs-throttle-1",
+      "source": "scripted"
+    },
+    {
+      "eventId": "evt-actionapproved-t0-3",
+      "kind": "ActionApproved",
+      "tick": 0,
+      "revision": 1,
+      "basisDigest": "fd5805ffbfc0f072355d9a9c672aabc4e40b10c45f62551cef97005d1df0fe59",
+      "actionId": "act-prop-qs-scale-1-r1",
+      "proposalId": "prop-qs-scale-1"
+    },
+    {
+      "eventId": "evt-incidentinjected-t0-4",
+      "kind": "IncidentInjected",
+      "tick": 0,
+      "revision": 2,
+      "basisDigest": "34a7414e86724d477f0a1cce7b1ab7d381c84b192b67c8f2b567d753e882f624",
+      "injectionKind": "database-pressure-queue-storm",
+      "description": "Simulated DB pressure injected: connections elevated to 94"
+    },
+    {
+      "eventId": "evt-stalebasirejected-t0-5",
+      "kind": "StaleBasiRejected",
+      "tick": 0,
+      "revision": 2,
+      "basisDigest": "34a7414e86724d477f0a1cce7b1ab7d381c84b192b67c8f2b567d753e882f624",
+      "actionId": "act-prop-qs-scale-1-r1",
+      "actionDigest": "fd5805ffbfc0f072355d9a9c672aabc4e40b10c45f62551cef97005d1df0fe59",
+      "currentDigest": "34a7414e86724d477f0a1cce7b1ab7d381c84b192b67c8f2b567d753e882f624"
+    },
+    {
+      "eventId": "evt-proposalcreated-t0-5",
+      "kind": "ProposalCreated",
+      "tick": 0,
+      "revision": 2,
+      "basisDigest": "34a7414e86724d477f0a1cce7b1ab7d381c84b192b67c8f2b567d753e882f624",
+      "proposalId": "prop-qs-scale-2",
+      "source": "scripted"
+    },
+    {
+      "eventId": "evt-proposalcreated-t0-6",
+      "kind": "ProposalCreated",
+      "tick": 0,
+      "revision": 2,
+      "basisDigest": "34a7414e86724d477f0a1cce7b1ab7d381c84b192b67c8f2b567d753e882f624",
+      "proposalId": "prop-qs-throttle-2",
+      "source": "scripted"
+    },
+    {
+      "eventId": "evt-actionapproved-t0-7",
+      "kind": "ActionApproved",
+      "tick": 0,
+      "revision": 2,
+      "basisDigest": "34a7414e86724d477f0a1cce7b1ab7d381c84b192b67c8f2b567d753e882f624",
+      "actionId": "act-prop-qs-throttle-2-r2",
+      "proposalId": "prop-qs-throttle-2"
+    },
+    {
+      "eventId": "evt-actionapplied-t0-9",
+      "kind": "ActionApplied",
+      "tick": 0,
+      "revision": 2,
+      "basisDigest": "34a7414e86724d477f0a1cce7b1ab7d381c84b192b67c8f2b567d753e882f624",
+      "actionId": "act-prop-qs-throttle-2-r2",
+      "revisionAfter": 3,
+      "digestAfter": "3723497444c1f3c77b1ac0b96f7e505ed9853140c65ae331ea30ce01674357f7"
+    },
+    {
+      "eventId": "evt-tickadvanced-t1-8",
+      "kind": "TickAdvanced",
+      "tick": 1,
+      "revision": 4,
+      "basisDigest": "9ad3415331267169e6e3c6e885c19a38e713f91dfabed77cb77b1ae524b1dad3",
+      "previousTick": 0
+    },
+    {
+      "eventId": "evt-tickadvanced-t2-9",
+      "kind": "TickAdvanced",
+      "tick": 2,
+      "revision": 5,
+      "basisDigest": "e8058e6e9905e9d4ab10a3d9b4d8964d5dec1eec47510aee7d587767c5a1f6c1",
+      "previousTick": 1
+    },
+    {
+      "eventId": "evt-tickadvanced-t3-10",
+      "kind": "TickAdvanced",
+      "tick": 3,
+      "revision": 6,
+      "basisDigest": "6acf0bc9eb5ad84d347ce549ee2873819f68bf010399f95bc21690e4cfdcd93c",
+      "previousTick": 2
+    }
+  ],
+  "demonstratedRejection": {
+    "kind": "stale-basis",
+    "actionDigest": "fd5805ffbfc0f072355d9a9c672aabc4e40b10c45f62551cef97005d1df0fe59",
+    "currentDigest": "34a7414e86724d477f0a1cce7b1ab7d381c84b192b67c8f2b567d753e882f624",
+    "currentRevision": 2
+  }
+}

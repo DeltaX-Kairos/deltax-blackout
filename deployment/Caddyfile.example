@@ -1,0 +1,47 @@
+# DeltaX Blackout — Example Caddyfile for Judge Access
+#
+# PURPOSE & ARCHITECTURE:
+# - Fronts the local Blackout lab server (running at 127.0.0.1:3000).
+# - Provides automatic HTTPS / TLS termination for placeholder domain blackout.example.com.
+# - Protects judge access with HTTP Basic Authentication using environment variables:
+#   BLACKOUT_JUDGE_USER and BLACKOUT_JUDGE_PASSWORD_HASH (never hardcode actual secrets).
+# - Preserves Host and Origin headers intact when proxying to 127.0.0.1:3000,
+#   ensuring upstream origin and CSRF protections are neither bypassed nor falsely rejected.
+# - Enforces reasonable HSTS (Strict-Transport-Security) and defensive headers.
+#
+# OPERATIONAL NOTES:
+# - On Linux, run the Blackout container with `--network host` so 127.0.0.1:3000
+#   is accessible directly from the host,; the application stays loopback-only.
+# - This protects judge access before application evaluation calls or free quota can run.
+# - Default application evaluation attempt ceiling (max 10 total across history,
+#   max 2 per session, max 1 active concurrent) remains unchanged and strictly enforced.
+# - Judges receive the HTTP Basic Auth username and password privately via Devpost
+#   submission details if publication is approved.
+# - To generate a password hash: caddy hash-password (enter the new judge password at its interactive prompt)
+
+blackout.example.com {
+    # Automatic HTTPS is enabled by default for non-IP, non-localhost hostnames in Caddy.
+
+    # Defensive security headers including reasonable HSTS
+    header {
+        Strict-Transport-Security "max-age=86400"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    # HTTP Basic Authentication protecting all routes
+    # Sourced from operator environment variables, never committed to source control.
+    basic_auth {
+        {$BLACKOUT_JUDGE_USER} {$BLACKOUT_JUDGE_PASSWORD_HASH}
+    }
+
+    # Reverse proxy to the local Blackout application server
+    # Crucial: Preserves downstream Host and Origin headers so upstream server-side
+    # origin allowlists and CSRF checks function correctly.
+    reverse_proxy 127.0.0.1:3000 {
+        header_up Host {host}
+        header_up Origin {http.request.header.Origin}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
