@@ -1,7 +1,7 @@
 # Blackout project and judging plan
 
 ## Audience and product claim
-For platform and integration engineers evaluating recovery agents. When a queue backs up, restarting workers may look sensible until database capacity or replica health changes. The product must show what the agent knew, why its candidate was eligible, what changed, and what was actually applied to the lab.
+For platform and integration engineers building recovery agents and running incident drills. When a queue backs up, restarting workers may look sensible until database capacity or replica health changes. The product must show what the agent knew, why its candidate was eligible, what changed, and what was actually applied to the lab.
 
 The central demonstration is a complete recurrent loop: observe state at t -> propose alternatives -> inspect constraints -> request hosted DeltaX Evaluate -> validate its response -> recheck the current basis -> approve and apply an exact lab action once -> observe the resulting state -> reconsider. Repeated HTTP calls alone are not recurrence; time, state, observations, outcomes and memory must participate.
 
@@ -23,11 +23,30 @@ Local constraints include capacity floor, replica availability, maximum resource
 ## Kiro utilization strategy
 Use Kiro Spec for requirements/design/tasks, steering for invariants, a scoped custom agent for adversarial recovery tests, property-based tests for state/action properties, and a post-edit hook to run focused invariants. Add an actual read-only MCP tool for scenario evidence once the executable core is stable. Capture what Kiro changed and which features were exercised. New features are earned through working code and tests, not extra logos or empty configuration.
 
+## Planned architecture
+
+```mermaid
+flowchart LR
+  K[Kiro specs, code, hooks and tests] --> A[Blackout application]
+  O[Observe lab at time t] --> P[Propose bounded alternatives]
+  P --> E[Hosted DeltaX Evaluate]
+  E --> R[Selection or refusal plus trace]
+  R --> G[App checks current revision and exact payload]
+  G --> H[Human confirms lab action]
+  H --> X[Apply once to disposable lab]
+  X --> N[Measure outcome and record history]
+  N --> O
+  A -. owns .-> O
+  A -. owns .-> G
+```
+
+Kiro is the builder. Evaluate is the hosted bounded evaluation service. The app maintains temporal state and enforces execution; the test rig supplies measured workload evidence when implemented.
+
 ## Milestones
 M1: Kiro-generated spec package and executable pure recovery core; 2 scenarios, deterministic seed/tick, proposal checks, stale-basis rejection, single-use execution, actual outcome/event history and meaningful property tests. Runnable textual local demonstration. No credentials/network.
 M2: polished workspace; Node-owned session state; HTTP API; topology/timeline, explanations, clear error/unknown states, downloadable evidence; browser test of the main loop.
 M3: exact hosted Evaluate transport with current official contract, synthetic transport tests, credential/budget plan; approved bounded live integration; no synthetic provider success.
-M4: Kiro-driven MCP observation and adversarial test workflow; optional real model proposal provider; same-seed baseline versus governed ablation and reproducible results.
+M4: add a disposable local service rig (API, durable queue and worker processes) alongside the deterministic model, with real workload counts, injected worker stops/backpressure, observed recovery and bounded process lifecycle. Keep model telemetry and measured process telemetry distinct. Kiro-driven MCP observation and adversarial tests; optional real model proposal provider; same-seed baseline versus governed ablation and reproducible results. The rig is a concrete pre-production testing tool, not a simulated production-readiness claim.
 M5: independent user test, reliability pass, public release/source/license review, stable judge hosting, continuous end-to-end demo, captions, Kiro build write-up, submission verification.
 
 ## Score evidence

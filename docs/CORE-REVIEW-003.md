@@ -1,0 +1,19 @@
+# Core review 003 — concrete remaining risks
+
+Review of the first executor/ledger/core draft. Resolve these before M1 is called verified, with regression tests that exercise real APIs:
+
+1. Executor compares action.payloadDigest to stored payloadDigest but never recomputes it from the received action fields. A caller can keep the original digest string, change parameters/actionType/proposalId and still pass. Recompute a documented projection of the exact executable fields, compare to the recorded confirmation, and reject every mismatch. Test changed parameters with original digest, changed ID/type and no confirmation.
+2. Duplicate terminal state must be monotonic. markRejected currently replaces consumed with rejected-duplicate/stale; isConsumed then becomes false, so a third submission may apply again. Check duplicate/terminal use before freshness and never downgrade the consumed state. Test at least THREE submissions and both stale and fresh-basis replay; all after first must have zero effect.
+3. Basis revision is not checked at execute time. Check both revision and digest, including two revisions with identical material projection. Reject terminal-state execution. Recheck feasibility against actual action parameters; do not clamp an invalid action into a different one after confirmation. Unknown action kind/missing/non-finite/negative/fractional parameters must not mutate metrics.
+4. RecoveryCore.approve should confirm a known immutable proposal matching its recorded generation payload and CURRENT basis; it currently stamps a fresh basis onto any passed Proposal. Stale or fabricated proposals must require re-proposal, not receive a new confirmation. Feasibility must pass before confirmation.
+5. currentState, getRevision and observe currently expose mutable internal state. Deep-freeze stored snapshots/proposals/receipts or return defensive deep copies. A caller must not mutate historical state/evidence through getters. Return event and ledger snapshots defensively as well.
+6. executeAction imports EventLog with import type but calls its static method; TypeScript compile must catch/fix this. Run compile plus actual tests, not just transpilation.
+7. advance consumes mutable RNG input. Describe it accurately as a deterministic transition with explicit PRNG state, or make the transition return the next RNG state without mutating its input. Reject non-finite/non-integer/out-of-sequence ticks before consuming RNG. Test replay and rejection invariants.
+
+The requirements/design should agree with the corrected implementation. Tick-limit termination must stay distinct from actual incident recovery. All results remain a fictional local lab and hosted status remains unconfigured.
+
+Independent initial typecheck: `node node_modules/typescript/bin/tsc --noEmit` failed with TS1361 for EventLog imported as type in executor.ts and TS2339 for missing Proposal.parameters in feasibility.ts/recovery-core.ts. This was before the builder checkpoint; fix and rerun.
+
+Final targeted follow-up: action.proposalId is not in the executable hash projection or compared against confirmation.proposalId. Changing only that field currently allows a different/empty proposal to supply receipt predictions. Reject a mismatched proposalId before effects and add a regression. Also clear SafeEvaluateAdapter's timeout timer in finally so a fast success/error does not leave a pending 30-second timer; test with a short explicit timeout and no live calls. Do not broaden scope beyond these actual remaining risks.
+
+Independent initial compiled test run passed 47 tests and both compiled CLI scenarios completed (queue storm seed42 at tick30; database pressure seed99 at tick25), but the full build gate still failed on union narrowing at tests/unit.test.ts:277. Fix that typing and rerun required checks before checkpoint.

@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+
+# Credential artifacts
+credentials.json
+*.key
+*.pem
+
+# Keep Kiro configuration tracked
+!.kiro/

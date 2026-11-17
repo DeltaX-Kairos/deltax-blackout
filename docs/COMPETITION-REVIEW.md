@@ -16,4 +16,4 @@ Target Frankenstein category. Overall awards: $30,000/$20,000/$10,000; category 
 - Build records must show Kiro creating/revising requirements, design, implementation, tests and hooks. A decorative .kiro folder does not establish usage.
 - Frankenstein fit: combine a deterministic service model, agent proposals, hosted bounded evaluation and evidence-bound execution into one incident recovery experience.
 - Initial work is local and unpaid. Live API use, hosting and public disclosure each need the concrete plan and applicable authority.
-- Public release must include all application code and a documented external Evaluate integration. Confirm with the organizer that the dependency/reproducibility arrangement satisfies the source requirement before final submission.
+- Public release must include all application code and a documented external Evaluate integration. Document that external dependency, access requirements and reproducibility limits in the release review before submission.
