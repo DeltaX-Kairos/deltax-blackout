@@ -2,7 +2,7 @@
   "name": "deltax-blackout",
   "version": "0.1.0",
   "private": true,
-  "description": "Incident recovery lab \u2014 M1 deterministic core",
+  "description": "Incident recovery lab with evidence-bound local execution",
   "type": "commonjs",
   "engines": {
     "node": ">=22.0.0"
@@ -13,9 +13,12 @@
     "demo": "tsc && node dist/src/cli.js",
     "demo:queue-storm": "tsc && node dist/src/cli.js --scenario queue-storm --seed 42",
     "demo:db-pressure": "tsc && node dist/src/cli.js --scenario database-pressure --seed 99",
-    "test": "tsc && node --test dist/tests/unit.test.js dist/tests/invariants.test.js",
+    "server": "tsc && node dist/src/server.js",
+    "test": "tsc && node --test dist/tests/unit.test.js dist/tests/invariants.test.js dist/tests/workspace.test.js dist/tests/capacity.test.js",
     "test:invariants": "tsc && node --test dist/tests/invariants.test.js",
-    "test:unit": "tsc && node --test dist/tests/unit.test.js"
+    "test:unit": "tsc && node --test dist/tests/unit.test.js",
+    "test:workspace": "tsc && node --test dist/tests/workspace.test.js",
+    "test:capacity": "tsc && node --test dist/tests/capacity.test.js"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

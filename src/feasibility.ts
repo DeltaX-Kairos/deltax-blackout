@@ -70,20 +70,34 @@ export function inspectFeasibility(
   };
 }
 
+/**
+ * Validate that a parameter value is a finite integer number.
+ * CORE-REVIEW-006: Check numeric integer target before arithmetic; fail-closed on malformed params.
+ */
+function isIntegerParam(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && Number.isInteger(value);
+}
+
 function checkCapacityFloorViolation(proposal: Proposal, state: ScenarioState): boolean {
   const os = state.operationalState;
   if (os.kind === "queue-storm") {
     if (proposal.actionType === "scale-workers") {
-      const targetWorkers = (proposal.parameters ?? {})["targetWorkerCount"] as number | undefined;
-      if (targetWorkers !== undefined && targetWorkers < FLOORS.workerCount) {
+      const targetWorkers = (proposal.parameters ?? {})["targetWorkerCount"];
+      if (!isIntegerParam(targetWorkers)) {
+        return true;
+      }
+      if (targetWorkers < FLOORS.workerCount) {
         return true;
       }
     }
   }
   if (os.kind === "database-pressure") {
     if (proposal.actionType === "reduce-connections") {
-      const targetConns = (proposal.parameters ?? {})["targetConnectionCount"] as number | undefined;
-      if (targetConns !== undefined && targetConns < FLOORS.connectionCount) {
+      const targetConns = (proposal.parameters ?? {})["targetConnectionCount"];
+      if (!isIntegerParam(targetConns)) {
+        return true;
+      }
+      if (targetConns < FLOORS.connectionCount) {
         return true;
       }
     }
@@ -95,16 +109,31 @@ function checkMaxResourceUseViolation(proposal: Proposal, state: ScenarioState):
   const os = state.operationalState;
   if (os.kind === "queue-storm") {
     if (proposal.actionType === "scale-workers") {
-      const targetWorkers = (proposal.parameters ?? {})["targetWorkerCount"] as number | undefined;
-      if (targetWorkers !== undefined && targetWorkers > CEILINGS.workerCount) {
+      const targetWorkers = (proposal.parameters ?? {})["targetWorkerCount"];
+      if (!isIntegerParam(targetWorkers)) {
+        return true;
+      }
+      if (targetWorkers > CEILINGS.workerCount) {
+        return true;
+      }
+      // CORE-REVIEW-006: enforce downstream DB connection budget for queue-storm scenarios
+      // Projected total = current.dbConnectionCount + (targetWorkerCount - current.workerCount) * 3
+      // Enforced independently of predictedEffects.
+      const currentWorkers = (os as QueueStormOperationalState).workerCount;
+      const currentDbConns = (os as QueueStormOperationalState).dbConnectionCount;
+      const projectedDbConns = currentDbConns + (targetWorkers - currentWorkers) * 3;
+      if (projectedDbConns > CEILINGS.queueDbConnections) {
         return true;
       }
     }
   }
   if (os.kind === "database-pressure") {
     if (proposal.actionType === "reduce-connections") {
-      const targetConns = (proposal.parameters ?? {})["targetConnectionCount"] as number | undefined;
-      if (targetConns !== undefined && targetConns > CEILINGS.connectionCount) {
+      const targetConns = (proposal.parameters ?? {})["targetConnectionCount"];
+      if (!isIntegerParam(targetConns)) {
+        return true;
+      }
+      if (targetConns > CEILINGS.connectionCount) {
         return true;
       }
     }

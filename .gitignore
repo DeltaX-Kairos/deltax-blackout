@@ -20,3 +20,6 @@ credentials.json
 
 # Keep Kiro configuration tracked
 !.kiro/
+
+# Runtime request bodies/receipts and local credentials never enter source.
+.blackout-private/

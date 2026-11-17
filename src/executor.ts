@@ -13,13 +13,20 @@
  *    basisRevision, or basisDigest will produce a mismatching recomputed digest.
  * 4. Parameter validation: reject non-finite, fractional, or negative values where
  *    the action type requires integer resource counts. Never clamp invalid inputs.
- * 5. Apply action, produce new ScenarioState, emit LabReceipt.
+ * 5. Feasibility & downstream capacity constraint (CORE-REVIEW-006): reject actions
+ *    that violate feasibility rules or exceed downstream DB connection budget (<=100).
+ *    Independent of predictedEffects; rejected confirmed actions produce no mutation.
+ * 6. Apply action, produce new ScenarioState, emit LabReceipt.
  *
  * CORE-REVIEW-003 fixes:
  *   §1  Recompute digest from action fields; don't trust the string.
  *   §2  Check consumed BEFORE stale-basis; never downgrade consumed status.
  *   §3  Check basisRevision; reject terminal state; validate params; never clamp invalid.
  *   §6  EventLog imported as value (not type) so static method call compiles.
+ *
+ * CORE-REVIEW-006 fix:
+ *   Enforce downstream DB connection budget (<= 100) independently in executor;
+ *   no mutation on rejected confirmed action.
  */
 
 import type {
@@ -37,6 +44,7 @@ import { computeBasisDigest, computeExecutablePayloadDigest } from "./digest.js"
 import { EventLog } from "./event-log.js";
 import type { ActionLedger } from "./action-ledger.js";
 import type { Proposal } from "./types.js";
+import { inspectFeasibility } from "./feasibility.js";
 
 export interface ExecutorDeps {
   ledger: ActionLedger;
@@ -191,6 +199,40 @@ export function executeAction(
     return { kind: "unconfirmed-payload", actionId: action.actionId, detail };
   }
 
+  // Guard 5: feasibility and downstream DB capacity check (CORE-REVIEW-006).
+  // Enforces actual projected DB demand <= 100 independently of predictedEffects.
+  // Rejection of a confirmed action produces NO mutation of state or revision.
+  const storedProposal = proposals.get(action.proposalId);
+  const proposalForCheck: Proposal = {
+    proposalId: action.proposalId,
+    source: storedProposal?.source ?? "scripted",
+    description: storedProposal?.description ?? "",
+    assumptions: storedProposal?.assumptions ?? [],
+    predictedEffects: storedProposal?.predictedEffects ?? {},
+    operatorReportedSupport: storedProposal?.operatorReportedSupport ?? 1,
+    basisRevision: action.basisRevision,
+    basisDigest: action.basisDigest,
+    semanticClass: storedProposal?.semanticClass ?? "draft",
+    actionType: action.actionType,
+    parameters: action.parameters,
+    payloadDigest: action.payloadDigest,
+  };
+
+  const feasibilityResult = inspectFeasibility(proposalForCheck, currentState);
+  if (!feasibilityResult.pass) {
+    const event = {
+      eventId: EventLog.makeEventId(currentState.tick, "FeasibilityRejected", eventLog.length),
+      kind: "FeasibilityRejected" as const,
+      tick: currentState.tick,
+      revision: currentState.revision,
+      basisDigest: currentState.basisDigest,
+      proposalId: action.proposalId,
+      violatedRules: feasibilityResult.violatedRules,
+    };
+    eventLog.append(event);
+    return { kind: "feasibility-failed", result: feasibilityResult };
+  }
+
   // Apply action.
   const proposal = proposals.get(action.proposalId);
   const predictedEffects = proposal?.predictedEffects ?? {};
@@ -298,10 +340,13 @@ function applyActionToOperationalState(
     if (action.actionType === "scale-workers") {
       // Parameters already validated; use exact value (no clamping of valid params).
       const target = action.parameters["targetWorkerCount"] as number;
+      // CORE-REVIEW-006: enforce downstream DB connection budget in executor
+      // Projected total = current.dbConnectionCount + (targetWorkerCount - current.workerCount) * 3
+      const projectedDbConns = qs.dbConnectionCount + (target - qs.workerCount) * 3;
       return {
         ...qs,
         workerCount: target,
-        dbConnectionCount: qs.dbConnectionCount + (target - qs.workerCount) * 3,
+        dbConnectionCount: projectedDbConns,
       };
     }
     if (action.actionType === "throttle-queue") {

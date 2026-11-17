@@ -1,85 +1,47 @@
 # Blackout
 
-A Kiroween 2026 project built with Kiro, using hosted DeltaX Evaluate in an incident recovery loop.
+Recovery actions can expire while the incident changes.
 
-**Product hypothesis:** recovery agents need to reconsider an action when the evidence changes between diagnosis and execution. Blackout makes that transition runnable and inspectable in a deterministic service lab.
+Blackout is an incident recovery lab for platform and integration engineers. It separates a proposed remedy, the evidence used to review it, explicit human confirmation, and the local action that actually runs. A changed revision or payload invalidates the old confirmation.
 
-A judge triggers a cascading failure, watches alternatives form, inspects the hosted Evaluate response, changes the system before execution, and sees a stale action stopped and recovery reconsidered against fresh evidence.
+**Current checkpoint:** the deterministic core and browser workspace are independently verified with **122 passing tests**. The hosted DeltaX Evaluate SDK is under a separate security review; no Blackout hosted call has been made. The measured process rig and final judge release are in progress. This repository remains private pending release approval.
 
-## M1 Status: Local core verified
+## Run the local lab
 
-The local M1 core is verified. Automatic Kiro hook observation is recorded separately in docs/KIRO-EVIDENCE.md. The deterministic recovery core, two scenarios (queue-storm and database-pressure), proposal generation, feasibility checks, stale-basis rejection, single-use action execution, and full event/receipt history are implemented and tested.
+Use Node.js 22 or newer:
 
-### Build and Run
-
-```bash
-# Install dependencies (Node 22+ required)
-npm install
-
-# Compile TypeScript to dist/
-npm run build
-
-# Run all tests (50 tests total)
+```sh
+npm ci
 npm test
-
-# Run only unit tests
-npm run test:unit
-
-# Run only invariant tests
-npm run test:invariants
-
-# Run queue-storm demo (seed 42, terminates ~tick 30)
-npm run demo:queue-storm
-
-# Run database-pressure demo (seed 99, terminates ~tick 25)
-npm run demo:db-pressure
-
-# Type-check without building
-npm run typecheck
+npm run server
 ```
 
-On this Mac, the pre-existing npm launcher is broken. Verification used the official npm 10.9.2 CLI at `/private/tmp/blackout-toolchain/package/bin/npm-cli.js`, invoked with Node, without changing the global installation. On a normal Node/npm installation, the commands above work directly.
+Open http://127.0.0.1:3000. The server binds to loopback. In the current local mode, workload and telemetry are explicitly simulated, proposals are scripted, and **no hosted evaluation is performed**.
 
-### What Works
+1. Start **Queue Storm**, seed **42**.
+2. Generate proposals and inspect scaling workers from 4 to 12. Its projected database demand is **72 / 100**.
+3. Inject database pressure. Connections rise to **94** and the observation gets a new revision and digest.
+4. Try the old staged action: it is rejected as stale.
+5. Generate fresh proposals. Scaling now projects **118 / 100** and is refused by the local resource rule.
+6. Choose the feasible ingestion cap, confirm the exact lab effect, and advance observations. Export the evidence bundle to inspect the state/action/outcome chain.
 
-- **Deterministic state machine**: Fixed seed produces identical outcomes across runs
-- **Two scenarios**: queue-storm (message backlog) and database-pressure (replica failover)
-- **Proposal generation**: Scripted proposals with typed parameters and predicted effects
-- **Feasibility rules**: capacity-floor, replica-availability, max-resource-use, observation-freshness, action-applicability
-- **Approval binding**: Actions carry confirmed proposal payload digest; tampering is rejected
-- **Stale-basis rejection**: Changing state between approval and execution rejects the action
-- **Single-use execution**: Duplicate action IDs are rejected; consumed state is monotonic
-- **Deep immutability**: All historical snapshots are frozen; getters return defensive copies
-- **Event causality**: Full append-only event log from ScenarioStarted to ScenarioTerminated
-- **Bounded termination**: Scenarios respect tickLimit; deterministic RNG ensures reproducibility
-- **Evaluate boundary**: Typed but unconfigured for M1; no network calls made
+The database-pressure scenario provides a second fictional failure case. Terminal states, duplicate actions, malformed parameters, cross-session stages and uncertain provider outcomes must never silently become new effects.
 
-### Test Coverage
+## Where hosted Evaluate fits
 
-- 50 tests total: nine fast-check property tests plus focused examples and regressions covering state transitions, freshness, confirmation binding, replay, immutability, outcome history and bounded termination
-- SafeEvaluateAdapter timeout cleanup regression tests
-- ProposalId mismatch rejection regression test
+The complete workflow is observe → propose → check local constraints → request bounded hosted review → retain the actual selection or refusal → recheck current evidence → human confirms → apply once → observe again. The application owns temporal history and execution authority. Evaluate neither verifies caller-reported telemetry nor authorizes a downstream action.
 
-### M1 Limitations
+Customer integration uses the [current account gateway](https://deltaxevaluate.com/developers/evaluate/account-reference.md), server-held credentials and a persistent attempt ledger. Development live access is disabled until its transport, response validation and reservation behavior pass review and project-specific credential use is approved. There are no credentials in this repository.
 
-- **No hosted Evaluate calls**: The adapter returns `{ status: "unconfigured" }`. M2+ will integrate the real API per docs/EVALUATE-INTEGRATION.md.
-- **No UI**: CLI text output only. M2 adds browser timeline and evidence viewer.
-- **No real workload**: Metrics are simulated via deterministic state transitions. M4 adds measured process telemetry.
+## Build and evidence
 
-### Evidence and Traceability
+Kiro generated the initial specs, recovery core, workspace and invariant tests. Its monthly quota was exhausted during the hosted work; the founder authorized Antigravity as the coding fallback. Codex coordinates, reviews and independently verifies, with narrow integration repairs attributed in the evidence log.
 
-- Kiro is the primary author of the core, scenarios, tests, specs and steering. Codex authored the project brief and applied narrow launch/hook configuration corrections; see docs/KIRO-EVIDENCE.md for attribution.
-- Builder report: see BUILDER-REPORT.md for actual commands, test results, and session evidence
-- Specifications: requirements, design, and tasks are tracked in project docs
-
----
-
-## Project Documentation
-
-- [Build brief](BUILD-BRIEF.md)
-- [Competition review](docs/COMPETITION-REVIEW.md)
+- [Kiro and fallback build evidence](docs/KIRO-EVIDENCE.md)
+- [Verified local workspace](docs/M2-VERIFICATION.md)
 - [Project and judging plan](docs/PROJECT-PLAN.md)
-- [Hosted Evaluate contract reference](docs/EVALUATE-INTEGRATION.md)
-- [Kiro evidence ledger](docs/KIRO-EVIDENCE.md)
+- [Competition rules review](docs/COMPETITION-REVIEW.md)
+- [Hosted integration specification](docs/HOSTED-BUILD-SPEC.md)
+- [Measured process rig plan](docs/PROCESS-RIG-PLAN.md)
 
-Keep this repository private during development. Before contest submission, prepare the required public open-source release, executable demo and public video for founder approval. The proprietary Evaluate engine remains hosted; disclose it as a pre-existing dependency.
+Hashes bind the recorded material state and exact executable payload. They are integrity references, not a safety certification, independent execution attestation or proof that supplied facts are true. The local simulation is a testing tool; it is not evidence of production recovery or customer impact.

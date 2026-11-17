@@ -332,6 +332,21 @@ export interface EvaluateUnconfiguredEvent extends BaseLabEvent {
   note: string;
 }
 
+/**
+ * Typed incident injection kinds.
+ * "database-pressure-queue-storm": inject elevated DB connections into a queue-storm scenario.
+ * "replica-loss": inject reduced replica availability into a database-pressure scenario.
+ */
+export type IncidentInjectionKind =
+  | "database-pressure-queue-storm"
+  | "replica-loss";
+
+export interface IncidentInjectedEvent extends BaseLabEvent {
+  kind: "IncidentInjected";
+  injectionKind: IncidentInjectionKind;
+  description: string;
+}
+
 export type LabEvent =
   | ScenarioStartedEvent
   | TickAdvancedEvent
@@ -343,7 +358,8 @@ export type LabEvent =
   | DuplicateActionRejectedEvent
   | UnconfirmedPayloadRejectedEvent
   | ScenarioTerminatedEvent
-  | EvaluateUnconfiguredEvent;
+  | EvaluateUnconfiguredEvent
+  | IncidentInjectedEvent;
 
 // ─── DeltaX Evaluate boundary ────────────────────────────────────────────────
 
@@ -478,6 +494,12 @@ export const FLOORS = {
 export const CEILINGS = {
   workerCount: 20,
   connectionCount: 200,
+  /**
+   * Explicit documented fictional queue downstream DB connection budget (CORE-REVIEW-006).
+   * Separately tracked from the database-pressure scenario's 200 connection pool ceiling.
+   * Projected queue DB demand: current.dbConnectionCount + (targetWorkerCount - current.workerCount) * 3 <= 100.
+   */
+  queueDbConnections: 100,
 } as const;
 
 export const DEFAULT_TICK_LIMIT = 100;

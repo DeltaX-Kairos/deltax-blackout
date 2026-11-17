@@ -26,6 +26,9 @@ import type {
   EvaluateResult,
   LabEvent,
   TerminationReason,
+  IncidentInjectionKind,
+  QueueStormOperationalState,
+  DatabasePressureOperationalState,
 } from "./types.js";
 import type { Clock } from "./clock.js";
 import type { Rng } from "./rng.js";
@@ -36,7 +39,7 @@ import type { FeasibilityConfig } from "./feasibility.js";
 import { executeAction } from "./executor.js";
 import { NullEvaluateAdapter } from "./evaluate-boundary.js";
 import { advance } from "./state-machine.js";
-import { computeExecutablePayloadDigest } from "./digest.js";
+import { computeExecutablePayloadDigest, computeBasisDigest } from "./digest.js";
 
 import {
   makeInitialQueueStormState,
@@ -84,6 +87,11 @@ function deepCopy<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
+export interface InjectResult {
+  kind: "injected" | "rejected-terminal" | "rejected-duplicate";
+  state?: ScenarioState;
+}
+
 export class RecoveryCore {
   private readonly clock: Clock;
   private readonly rng: Rng;
@@ -97,6 +105,7 @@ export class RecoveryCore {
   // Stores only proposals that came from propose() — not caller-constructed ones.
   private readonly _proposals = new Map<string, Proposal>();
   private _eventCounter = 0;
+  private readonly _appliedInjections = new Set<IncidentInjectionKind>();
 
   constructor(options: RecoveryCoreOptions) {
     if (!options.clock) {
@@ -361,6 +370,80 @@ export class RecoveryCore {
     }
 
     return result;
+  }
+
+  // ─── Incident injection ──────────────────────────────────────────────────
+
+  /**
+   * Inject a typed incident into the current state.
+   *
+   * Requirements (review §6):
+   * - Reject injection against a terminal scenario.
+   * - Each injection kind may only be applied once; repeated injection is rejected.
+   * - Each injection increments revision, recalculates basisDigest, adds an
+   *   immutable snapshot and a typed causal event.
+   * - No `any` — injection operates through the typed OperationalState union.
+   */
+  injectIncident(kind: IncidentInjectionKind): InjectResult {
+    if (this._currentState.status !== "running") {
+      return { kind: "rejected-terminal" };
+    }
+    if (this._appliedInjections.has(kind)) {
+      return { kind: "rejected-duplicate" };
+    }
+
+    const op = this._currentState.operationalState;
+    let newOp: typeof op;
+
+    if (kind === "database-pressure-queue-storm") {
+      if (op.kind !== "queue-storm") {
+        return { kind: "rejected-duplicate" }; // wrong scenario
+      }
+      const qs = op as QueueStormOperationalState;
+      // Inject elevated DB connections (simulated: 94 connections).
+      newOp = { ...qs, dbConnectionCount: 94 };
+    } else {
+      // kind === "replica-loss"
+      if (op.kind !== "database-pressure") {
+        return { kind: "rejected-duplicate" }; // wrong scenario
+      }
+      const db = op as DatabasePressureOperationalState;
+      // Inject replica loss: reduce replica availability to 0.
+      newOp = { ...db, replicaAvailability: 0.0 };
+    }
+
+    const partial: Omit<ScenarioState, "basisDigest"> = {
+      scenarioId: this._currentState.scenarioId,
+      tick: this._currentState.tick,
+      revision: this._currentState.revision + 1,
+      status: this._currentState.status,
+      terminationReason: this._currentState.terminationReason,
+      operationalState: newOp,
+      tickLimit: this._currentState.tickLimit,
+    };
+    const newBasisDigest = computeBasisDigest(partial);
+    const newState: ScenarioState = { ...partial, basisDigest: newBasisDigest };
+
+    this._currentState = deepFreeze(newState);
+    this._revisionHistory.push(this._currentState);
+    this._appliedInjections.add(kind);
+
+    const description =
+      kind === "database-pressure-queue-storm"
+        ? "Simulated DB pressure injected: connections elevated to 94"
+        : "Simulated replica loss injected: replicaAvailability set to 0";
+
+    this._appendEvent({
+      eventId: this._nextEventId("IncidentInjected"),
+      kind: "IncidentInjected",
+      tick: this._currentState.tick,
+      revision: this._currentState.revision,
+      basisDigest: this._currentState.basisDigest,
+      injectionKind: kind,
+      description,
+    });
+
+    return { kind: "injected", state: deepCopy(this._currentState) };
   }
 
   // ─── Evaluate boundary ───────────────────────────────────────────────────
