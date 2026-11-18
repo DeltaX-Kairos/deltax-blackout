@@ -1,0 +1,35 @@
+{
+  "checked_date": "2026-11-17 America/Los_Angeles",
+  "url": "https://blackout.deltaxevaluate.com/",
+  "public_https_authenticated": true,
+  "unauthenticated_status": 401,
+  "cumulative_hosted_reviews": 6,
+  "public_rehearsal_reviews": 2,
+  "all_public_rehearsal_responses_selected": true,
+  "service_gates_per_response_passed": 12,
+  "prior_history_preserved": true,
+  "stale_action_rejected": true,
+  "fresh_scale_projection": {
+    "connections": 118,
+    "limit": 100,
+    "locally_blocked": true
+  },
+  "applied_recovery": {
+    "action": "throttle-queue",
+    "cap_per_ten_seconds": 60
+  },
+  "model_outcome": {
+    "tick": 3,
+    "queue_depth": 4615,
+    "error_percent": 35.9,
+    "production_benchmark": false
+  },
+  "measured_rig": {
+    "completed_jobs": 24,
+    "unknown_jobs": 0,
+    "workers_after_close": 0,
+    "handles_after_close": 0,
+    "child_exit_observed": true,
+    "hosted_calls": 0
+  }
+}

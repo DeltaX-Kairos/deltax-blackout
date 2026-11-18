@@ -1,3 +1,5 @@
+> Historical approval packet. The founder approved release using existing AWS credits; public deployment is now verified. Current links, allowance and observed checks are in [HOSTED-RELEASE.md](HOSTED-RELEASE.md). This packet preserves the original ten-attempt proposal, which the founder later asked to expand.
+
 # Blackout publication review
 
 ## Finished private deliverables

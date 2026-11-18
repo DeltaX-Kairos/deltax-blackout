@@ -17,6 +17,10 @@ import {
   resolvePublicOrigin,
   deploymentCookieSecure,
   INVALID_ORIGIN_ERROR,
+  resolveHostedAttemptLimits,
+  INVALID_ATTEMPT_LIMITS_ERROR,
+  DEFAULT_MAX_TOTAL_ATTEMPTS,
+  DEFAULT_MAX_BROWSER_ATTEMPTS,
 } from "../src/release-config.js";
 
 describe("release-config: resolvePublicOrigin", () => {
@@ -336,5 +340,220 @@ describe("release-config: deploymentCookieSecure", () => {
 
   test("returns false for empty string", () => {
     assert.strictEqual(deploymentCookieSecure(""), false);
+  });
+});
+
+describe("release-config: resolveHostedAttemptLimits", () => {
+  describe("defaults when absent", () => {
+    test("defaults to 10 total and 2 browser when both env vars are absent", () => {
+      assert.deepStrictEqual(resolveHostedAttemptLimits({}), {
+        maxTotalAttempts: DEFAULT_MAX_TOTAL_ATTEMPTS,
+        maxBrowserAttempts: DEFAULT_MAX_BROWSER_ATTEMPTS,
+      });
+      assert.deepStrictEqual(
+        resolveHostedAttemptLimits({
+          BLACKOUT_MAX_TOTAL_ATTEMPTS: undefined,
+          BLACKOUT_MAX_BROWSER_ATTEMPTS: undefined,
+        }),
+        {
+          maxTotalAttempts: 10,
+          maxBrowserAttempts: 2,
+        }
+      );
+    });
+
+    test("defaults browser to 2 when only total is configured", () => {
+      assert.deepStrictEqual(
+        resolveHostedAttemptLimits({ BLACKOUT_MAX_TOTAL_ATTEMPTS: "100" }),
+        { maxTotalAttempts: 100, maxBrowserAttempts: 2 }
+      );
+    });
+
+    test("defaults total to 10 when only browser is configured within 1..6", () => {
+      assert.deepStrictEqual(
+        resolveHostedAttemptLimits({ BLACKOUT_MAX_BROWSER_ATTEMPTS: "6" }),
+        { maxTotalAttempts: 10, maxBrowserAttempts: 6 }
+      );
+    });
+  });
+
+  describe("valid canonical decimal limits", () => {
+    test("accepts judging target 100 total and 6 per browser identity", () => {
+      assert.deepStrictEqual(
+        resolveHostedAttemptLimits({
+          BLACKOUT_MAX_TOTAL_ATTEMPTS: "100",
+          BLACKOUT_MAX_BROWSER_ATTEMPTS: "6",
+        }),
+        { maxTotalAttempts: 100, maxBrowserAttempts: 6 }
+      );
+    });
+
+    test("accepts minimum boundaries 1/1 and equal boundary 6/6", () => {
+      assert.deepStrictEqual(
+        resolveHostedAttemptLimits({
+          BLACKOUT_MAX_TOTAL_ATTEMPTS: "1",
+          BLACKOUT_MAX_BROWSER_ATTEMPTS: "1",
+        }),
+        { maxTotalAttempts: 1, maxBrowserAttempts: 1 }
+      );
+      assert.deepStrictEqual(
+        resolveHostedAttemptLimits({
+          BLACKOUT_MAX_TOTAL_ATTEMPTS: "6",
+          BLACKOUT_MAX_BROWSER_ATTEMPTS: "6",
+        }),
+        { maxTotalAttempts: 6, maxBrowserAttempts: 6 }
+      );
+    });
+
+    test("accepts intermediate valid limits", () => {
+      assert.deepStrictEqual(
+        resolveHostedAttemptLimits({
+          BLACKOUT_MAX_TOTAL_ATTEMPTS: "42",
+          BLACKOUT_MAX_BROWSER_ATTEMPTS: "4",
+        }),
+        { maxTotalAttempts: 42, maxBrowserAttempts: 4 }
+      );
+    });
+  });
+
+  describe("invalid attempt limits rejected with fixed sanitized error", () => {
+    const invalidTotalCases = [
+      "",
+      " ",
+      " 10",
+      "10 ",
+      "\t10",
+      "10\n",
+      "0",
+      "00",
+      "01",
+      "010",
+      "-1",
+      "-10",
+      "+10",
+      "10.0",
+      "10.5",
+      "1e2",
+      "1E1",
+      "1e+2",
+      "1_0",
+      "0x64",
+      "ten",
+      "NaN",
+      "Infinity",
+      "101",
+      "999",
+      "99999999999999999999999",
+    ];
+
+    for (const bad of invalidTotalCases) {
+      test(`rejects invalid BLACKOUT_MAX_TOTAL_ATTEMPTS: ${JSON.stringify(bad)}`, () => {
+        assert.throws(
+          () =>
+            resolveHostedAttemptLimits({
+              BLACKOUT_MAX_TOTAL_ATTEMPTS: bad,
+              BLACKOUT_MAX_BROWSER_ATTEMPTS: "2",
+            }),
+          { message: INVALID_ATTEMPT_LIMITS_ERROR }
+        );
+      });
+    }
+
+    const invalidBrowserCases = [
+      "",
+      " ",
+      " 2",
+      "2 ",
+      "\t6",
+      "6\n",
+      "0",
+      "00",
+      "02",
+      "-1",
+      "+2",
+      "2.0",
+      "2.5",
+      "2e0",
+      "1E0",
+      "1_2",
+      "0x6",
+      "six",
+      "7",
+      "10",
+      "100",
+    ];
+
+    for (const bad of invalidBrowserCases) {
+      test(`rejects invalid BLACKOUT_MAX_BROWSER_ATTEMPTS: ${JSON.stringify(bad)}`, () => {
+        assert.throws(
+          () =>
+            resolveHostedAttemptLimits({
+              BLACKOUT_MAX_TOTAL_ATTEMPTS: "100",
+              BLACKOUT_MAX_BROWSER_ATTEMPTS: bad,
+            }),
+          { message: INVALID_ATTEMPT_LIMITS_ERROR }
+        );
+      });
+    }
+
+    test("rejects browser > total", () => {
+      assert.throws(
+        () =>
+          resolveHostedAttemptLimits({
+            BLACKOUT_MAX_TOTAL_ATTEMPTS: "4",
+            BLACKOUT_MAX_BROWSER_ATTEMPTS: "6",
+          }),
+        { message: INVALID_ATTEMPT_LIMITS_ERROR }
+      );
+      assert.throws(
+        () =>
+          resolveHostedAttemptLimits({
+            BLACKOUT_MAX_TOTAL_ATTEMPTS: "5",
+            BLACKOUT_MAX_BROWSER_ATTEMPTS: "6",
+          }),
+        { message: INVALID_ATTEMPT_LIMITS_ERROR }
+      );
+      // When browser is absent it defaults to 2, which exceeds explicit total=1
+      assert.throws(
+        () =>
+          resolveHostedAttemptLimits({
+            BLACKOUT_MAX_TOTAL_ATTEMPTS: "1",
+          }),
+        { message: INVALID_ATTEMPT_LIMITS_ERROR }
+      );
+    });
+
+    test("rejects non-string runtime values", () => {
+      assert.throws(
+        () =>
+          resolveHostedAttemptLimits({
+            BLACKOUT_MAX_TOTAL_ATTEMPTS: null as unknown as string,
+          }),
+        { message: INVALID_ATTEMPT_LIMITS_ERROR }
+      );
+      assert.throws(
+        () =>
+          resolveHostedAttemptLimits({
+            BLACKOUT_MAX_BROWSER_ATTEMPTS: 6 as unknown as string,
+          }),
+        { message: INVALID_ATTEMPT_LIMITS_ERROR }
+      );
+    });
+
+    test("error message never echoes raw invalid input", () => {
+      const canary = "CANARY_SECRET_LIMIT_VALUE_4455";
+      let caughtError: Error | undefined;
+      try {
+        resolveHostedAttemptLimits({
+          BLACKOUT_MAX_TOTAL_ATTEMPTS: canary,
+          BLACKOUT_MAX_BROWSER_ATTEMPTS: "6",
+        });
+      } catch (err) {
+        caughtError = err as Error;
+      }
+      assert.ok(caughtError);
+      assert.strictEqual(caughtError.message, INVALID_ATTEMPT_LIMITS_ERROR);
+      assert.ok(!caughtError.message.includes(canary));
+    });
   });
 });

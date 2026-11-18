@@ -1,6 +1,6 @@
-# Final local verification — November 17, 2026
+# Local capture verification and public release
 
-This is a verified local build, not a cloud deployment or a submitted entry.
+The capture record below describes the original local build. The later public HTTPS release and current judging limits are independently verified in [HOSTED-RELEASE.md](HOSTED-RELEASE.md). The application release is not a contest submission.
 
 ## Independent automated checks
 
@@ -16,10 +16,10 @@ Fresh scale-up projected118/100 and was locally blocked. The second real hosted 
 
 The measured rig admitted24fixed fictional jobs to a real SQLite queue and started one paused child worker. It measured48managed handles, then94under pressure. Fresh scaling projected103/100 and was blocked. Human-confirmed resume received an actual worker acknowledgement and drained24jobs. Close observed child termination and zero remaining managed handles. This is a trusted local workload, not arbitrary-code sandbox isolation.
 
-Four total development review attempts have been used, all completed/selected; zero unknown outcomes were observed. The approved ten-attempt ledger has **six reservations remaining**. Each recording browser used its two allowed attempts. No budget was reset or limit raised. The rig makes zero hosted calls.
+At the end of the original local capture, four total reviews had completed/selected, with zero unknown outcomes and six reservations remaining under the then-approved ten-attempt ceiling. Each recording browser used its original two-attempt allowance. That capture did not reset or increase a budget. The subsequent public rehearsal added two completed reviews; the founder then authorized additional judge capacity. See the current release record for 100/six limits and preserved history. The rig makes zero hosted calls.
 
 Sanitized checked summaries are in `docs/evidence/hosted-browser-run-summary.json` and `measured-rig-run.json`. Original request/binding/envelope exports and capture manifests are retained in ignored private artifacts. Browser identity is excluded from public evidence.
 
-## Boundaries still requiring verification
+## Release status
 
-The repository is private. No cloud instance, DNS record, public video, public source release, Kiroween registration or final submission has been created for Blackout. Docker configuration is prepared but unbuilt on this Mac. Hosted access on a future Linux server must be verified after approval; local results do not establish that deployment. Judge hosting, credential transfer and any increase above the ten-attempt allowance require the scoped release approval.
+Source and the corrected video are public. The dedicated AWS host, DNS, HTTPS, judge authentication, hosted gateway receipts and measured cleanup have been verified. Docker remains unbuilt on this Mac. Kiroween eligibility, registration and final submission have not been performed as part of this release.

@@ -29,7 +29,7 @@ The rig forks a fixed local worker module with bounded data and a minimal enviro
 
 A request has no automatic retry. Timeouts, interrupted transport, malformed completed responses and HTTP202 preserve uncertainty. An uncertain reservation continues to consume application allowance. Missing, truncated or corrupt configured history disables hosted access; it never creates a fresh budget. An explicit fresh initialization is allowed only on a nonexistent file.
 
-Development limits are ten attempts in total including history, two per persistent browser identity, and one globally active request. These are application limits in addition to the account gateway allowance. A browser limit is not a provider outage. A new scenario is not a new browser identity. Credentials and request ledgers stay outside source and browser bundles.
+Development defaults are ten attempts in total including history and two per persistent browser identity. The authorized judging configuration is 100 total and six per identity, while retaining one globally active request. Trusted server configuration is validated before use; public requests cannot raise limits. Raising the ceiling preserves all existing reservations and unknown locks. These are application limits in addition to the account gateway allowance. A browser limit is not a provider outage. A new scenario is not a new browser identity. Credentials and request ledgers stay outside source and browser bundles.
 
 ## Repository-scale extension
 

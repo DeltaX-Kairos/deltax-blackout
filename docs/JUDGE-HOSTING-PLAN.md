@@ -1,6 +1,6 @@
-# Judge hosting plan — preparation only
+# Judge hosting plan and release status
 
-No Blackout cloud resource, DNS record or production credential has been created. Account credit balances and Free-plan eligibility are not yet verified. Review this plan against the finished app before requesting deployment approval.
+The founder approved this plan using existing AWS Free-plan credits. The application is now deployed on the dedicated `blackout-judging` host at https://blackout.deltaxevaluate.com/. See [HOSTED-RELEASE.md](HOSTED-RELEASE.md) for observed release checks; the remaining paragraphs preserve the hosting rationale and constraints. AWS showed $100 available at provisioning; that is a verified balance snapshot, not a guarantee about future shared-account usage.
 
 The measured rig requires a persistent Node22+ Linux process, local SQLite storage and owned child processes. A static page or edge-only worker cannot run that backend. Deploy one application process; the reservation ledger and rig lease must remain authoritative rather than being cloned across uncoordinated replicas.
 

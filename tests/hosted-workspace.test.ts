@@ -32,6 +32,7 @@ import { createServer, type IRigWorkspace } from "../src/server.js";
 import { HostedController } from "../src/hosted-controller.js";
 import { HostedReviewClient } from "../src/hosted/client.js";
 import { ReservationLedger } from "../src/hosted/ledger.js";
+import { INVALID_ATTEMPT_LIMITS_ERROR } from "../src/release-config.js";
 import {
   type HostedGateRecord,
   type HostedReasonCode,
@@ -1840,5 +1841,571 @@ describe("Hosted Review Workspace Integration", () => {
       // Server close coordinates rig shutdown
       assert.equal(shutdownCalled, true);
     }
+  });
+
+  // ─── 18. Trusted server attempt limits (100 total / 6 browser) ──────────────
+
+  async function withEnv<T>(
+    overrides: Record<string, string | undefined>,
+    fn: () => Promise<T>
+  ): Promise<T> {
+    const prev: Record<string, string | undefined> = {};
+    for (const [k, v] of Object.entries(overrides)) {
+      prev[k] = process.env[k];
+      if (v === undefined) {
+        delete process.env[k];
+      } else {
+        process.env[k] = v;
+      }
+    }
+    try {
+      return await fn();
+    } finally {
+      for (const [k, v] of Object.entries(prev)) {
+        if (v === undefined) {
+          delete process.env[k];
+        } else {
+          process.env[k] = v;
+        }
+      }
+    }
+  }
+
+  async function appendCompletedReservation(
+    ledger: ReservationLedger,
+    opts: {
+      idempotencyKey: string;
+      sessionId: string;
+      basisRevision?: number;
+      receiptId: string;
+    }
+  ): Promise<void> {
+    const requestBody = JSON.stringify({
+      profile_id: "deltax-hosted-bounded-review-evaluation-v1",
+      objective: "Validate proposed scaling plan without changing services",
+      context: { tick: 0 },
+      candidates: [
+        {
+          candidate_id: "cand_scale_workers_12",
+          semantic_class: "analyze",
+          description: "Validate scaling plan",
+          operator_reported_support: 0.8,
+        },
+      ],
+    });
+    const bodySha256 = createHash("sha256").update(requestBody, "utf8").digest("hex");
+    const basisDigest = createHash("sha256").update(`basis:${opts.idempotencyKey}`, "utf8").digest("hex");
+    const payloadHash = createHash("sha256").update(`payload:${opts.idempotencyKey}`, "utf8").digest("hex");
+
+    await ledger.reserve({
+      idempotencyKey: opts.idempotencyKey,
+      bodySha256,
+      sessionId: opts.sessionId,
+      basisRevision: opts.basisRevision ?? 1,
+      basisDigest,
+      requestBody,
+      candidateIds: ["cand_scale_workers_12"],
+      candidatePayloadHashes: { cand_scale_workers_12: payloadHash },
+    });
+
+    await ledger.recordTransition(opts.idempotencyKey, {
+      state: "selected",
+      httpStatus: 200,
+      detail: "candidate_selected",
+      selectedCandidateId: "cand_scale_workers_12",
+      rawEnvelope: makeSyntheticResponse({
+        outcome: "selected",
+        selectedCandidateId: "cand_scale_workers_12",
+        receiptId: opts.receiptId,
+      }) as any,
+    });
+  }
+
+  test("Real default controller in createServer exposes 100/6 limits and retains 6 prior historical reservations", async () => {
+    const priorIdentityA = "a".repeat(32);
+    const priorIdentityB = "b".repeat(32);
+    const priorIdentityC = "c".repeat(32);
+    const histLedger = new ReservationLedger(ledgerPath);
+
+    await appendCompletedReservation(histLedger, {
+      idempotencyKey: "hist_attempt_000000000001",
+      sessionId: priorIdentityA,
+      receiptId: "eval_hist_001",
+    });
+    await appendCompletedReservation(histLedger, {
+      idempotencyKey: "hist_attempt_000000000002",
+      sessionId: priorIdentityA,
+      receiptId: "eval_hist_002",
+    });
+    await appendCompletedReservation(histLedger, {
+      idempotencyKey: "hist_attempt_000000000003",
+      sessionId: priorIdentityB,
+      receiptId: "eval_hist_003",
+    });
+    await appendCompletedReservation(histLedger, {
+      idempotencyKey: "hist_attempt_000000000004",
+      sessionId: priorIdentityB,
+      receiptId: "eval_hist_004",
+    });
+    await appendCompletedReservation(histLedger, {
+      idempotencyKey: "hist_attempt_000000000005",
+      sessionId: priorIdentityC,
+      receiptId: "eval_hist_005",
+    });
+    await appendCompletedReservation(histLedger, {
+      idempotencyKey: "hist_attempt_000000000006",
+      sessionId: priorIdentityC,
+      receiptId: "eval_hist_006",
+    });
+
+    await withEnv(
+      {
+        BLACKOUT_ENABLE_HOSTED: "true",
+        BLACKOUT_CLIENT_ID: "test_client_id",
+        BLACKOUT_CLIENT_SECRET: "test_client_secret",
+        BLACKOUT_LEDGER_PATH: ledgerPath,
+        BLACKOUT_MAX_TOTAL_ATTEMPTS: "100",
+        BLACKOUT_MAX_BROWSER_ATTEMPTS: "6",
+      },
+      async () => {
+        const service = new WorkspaceService();
+        const server = createServer(service);
+        await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+        const addr = server.address() as any;
+
+        try {
+          // Existing historical browser identity retains its 2 counted attempts out of 6
+          const priorStatus = await request("127.0.0.1", addr.port, "GET", "/api/live/status", {
+            cookie: `bk_identity=${priorIdentityA}`,
+            hostHeader: `127.0.0.1:${addr.port}`,
+          });
+          assert.equal(priorStatus.status, 200);
+          assert.equal(priorStatus.body.configured, true);
+          assert.equal(priorStatus.body.status, "available");
+          assert.equal(priorStatus.body.active, false);
+          assert.deepEqual(priorStatus.body.allowance, {
+            totalMax: 100,
+            totalUsed: 6,
+            sessionMax: 6,
+            sessionUsed: 2,
+            sessionRemaining: 4,
+            activeConcurrent: 0,
+          });
+
+          // Fresh browser identity sees all 6 historical attempts counted against 100 total
+          const freshStatus = await request("127.0.0.1", addr.port, "GET", "/api/live/status", {
+            hostHeader: `127.0.0.1:${addr.port}`,
+          });
+          assert.equal(freshStatus.status, 200);
+          assert.equal(freshStatus.body.configured, true);
+          assert.equal(freshStatus.body.status, "available");
+          assert.deepEqual(freshStatus.body.allowance, {
+            totalMax: 100,
+            totalUsed: 6,
+            sessionMax: 6,
+            sessionUsed: 0,
+            sessionRemaining: 6,
+            activeConcurrent: 0,
+          });
+        } finally {
+          service.close();
+          server.close();
+        }
+      }
+    );
+  });
+
+  test("100/6 limits persist per-identity counts, unknown locks, and active concurrency across restart", async () => {
+    const identityA = "a".repeat(32);
+    const identityB = "b".repeat(32);
+    const identityC = "c".repeat(32);
+    const lockedIdentity = "d".repeat(32);
+    const busyIdentity = "e".repeat(32);
+
+    const histLedger = new ReservationLedger(ledgerPath);
+    await appendCompletedReservation(histLedger, {
+      idempotencyKey: "hist_restart_00000000001",
+      sessionId: identityA,
+      receiptId: "eval_hist_r01",
+    });
+    await appendCompletedReservation(histLedger, {
+      idempotencyKey: "hist_restart_00000000002",
+      sessionId: identityA,
+      receiptId: "eval_hist_r02",
+    });
+    await appendCompletedReservation(histLedger, {
+      idempotencyKey: "hist_restart_00000000003",
+      sessionId: identityB,
+      receiptId: "eval_hist_r03",
+    });
+    await appendCompletedReservation(histLedger, {
+      idempotencyKey: "hist_restart_00000000004",
+      sessionId: identityB,
+      receiptId: "eval_hist_r04",
+    });
+    await appendCompletedReservation(histLedger, {
+      idempotencyKey: "hist_restart_00000000005",
+      sessionId: identityC,
+      receiptId: "eval_hist_r05",
+    });
+    await appendCompletedReservation(histLedger, {
+      idempotencyKey: "hist_restart_00000000006",
+      sessionId: identityC,
+      receiptId: "eval_hist_r06",
+    });
+
+    const fakeFetch: FetchFn = async (url, init) => {
+      if (url.includes("/oauth/token")) {
+        return new Response(
+          JSON.stringify({
+            access_token: "dxbt_test_token_123",
+            token_type: "Bearer",
+            expires_in: 900,
+            scope: "deltax:evaluate",
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+      if (url.includes("/evaluations")) {
+        const parsed = JSON.parse(init?.body as string);
+        const synthetic = makeSyntheticResponse({
+          outcome: "selected",
+          selectedCandidateId: parsed.candidates[0].candidate_id,
+        });
+        return new Response(JSON.stringify(synthetic), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response("Not found", { status: 404 });
+    };
+
+    // Run 4 additional evaluations for identityA (total 6 for identityA, 10 overall)
+    const client1 = new HostedReviewClient({
+      clientId: "test_client_id",
+      clientSecret: "test_client_secret",
+      ledgerPath,
+      fetch: fakeFetch,
+      maxAttempts: 100,
+      maxPerSession: 6,
+    });
+    await client1.init();
+
+    const controller1 = new HostedController({
+      client: client1,
+      maxAttempts: 100,
+      maxPerSession: 6,
+    });
+    const service1 = new WorkspaceService(controller1);
+    const server1 = createServer(service1, controller1);
+    await new Promise<void>((resolve) => server1.listen(0, "127.0.0.1", resolve));
+    const addr1 = server1.address() as any;
+
+    try {
+      let currentIdentityCookie = `bk_identity=${identityA}`;
+      for (let i = 0; i < 4; i++) {
+        const s = await request("127.0.0.1", addr1.port, "POST", "/api/session", {
+          cookie: currentIdentityCookie,
+          body: { scenarioName: "queue-storm", seed: 42 + i },
+          hostHeader: `127.0.0.1:${addr1.port}`,
+          origin: `http://127.0.0.1:${addr1.port}`,
+        });
+        assert.equal(s.status, 201);
+        const sessionCookie = makeCookieString({
+          bk_identity: identityA,
+          bk_session: s.cookies["bk_session"],
+        });
+        currentIdentityCookie = `bk_identity=${identityA}`;
+        const csrf = s.body.csrfToken;
+
+        const prop = await request("127.0.0.1", addr1.port, "POST", "/api/propose", {
+          cookie: sessionCookie,
+          csrf,
+          hostHeader: `127.0.0.1:${addr1.port}`,
+          origin: `http://127.0.0.1:${addr1.port}`,
+        });
+        assert.equal(prop.status, 200);
+
+        const ev = await request("127.0.0.1", addr1.port, "POST", "/api/evaluate", {
+          cookie: sessionCookie,
+          csrf,
+          body: {},
+          hostHeader: `127.0.0.1:${addr1.port}`,
+          origin: `http://127.0.0.1:${addr1.port}`,
+        });
+        assert.equal(ev.status, 200);
+        assert.equal(ev.body.status, "selected");
+      }
+
+      // 7th attempt for identityA is rejected with 429
+      const s7 = await request("127.0.0.1", addr1.port, "POST", "/api/session", {
+        cookie: currentIdentityCookie,
+        body: { scenarioName: "queue-storm", seed: 99 },
+        hostHeader: `127.0.0.1:${addr1.port}`,
+        origin: `http://127.0.0.1:${addr1.port}`,
+      });
+      assert.equal(s7.status, 201);
+      const cookie7 = makeCookieString({
+        bk_identity: identityA,
+        bk_session: s7.cookies["bk_session"],
+      });
+      await request("127.0.0.1", addr1.port, "POST", "/api/propose", {
+        cookie: cookie7,
+        csrf: s7.body.csrfToken,
+        hostHeader: `127.0.0.1:${addr1.port}`,
+        origin: `http://127.0.0.1:${addr1.port}`,
+      });
+      const eval7 = await request("127.0.0.1", addr1.port, "POST", "/api/evaluate", {
+        cookie: cookie7,
+        csrf: s7.body.csrfToken,
+        body: {},
+        hostHeader: `127.0.0.1:${addr1.port}`,
+        origin: `http://127.0.0.1:${addr1.port}`,
+      });
+      assert.equal(eval7.status, 429);
+      assert.match(eval7.body.error, /budget exceeded/i);
+    } finally {
+      service1.close();
+      server1.close();
+    }
+
+    // Restart with real default controller configured via env for 100/6
+    await withEnv(
+      {
+        BLACKOUT_ENABLE_HOSTED: "true",
+        BLACKOUT_CLIENT_ID: "test_client_id",
+        BLACKOUT_CLIENT_SECRET: "test_client_secret",
+        BLACKOUT_LEDGER_PATH: ledgerPath,
+        BLACKOUT_MAX_TOTAL_ATTEMPTS: "100",
+        BLACKOUT_MAX_BROWSER_ATTEMPTS: "6",
+      },
+      async () => {
+        const service2 = new WorkspaceService();
+        const server2 = createServer(service2);
+        await new Promise<void>((resolve) => server2.listen(0, "127.0.0.1", resolve));
+        const addr2 = server2.address() as any;
+
+        try {
+          const exhaustedStatus = await request("127.0.0.1", addr2.port, "GET", "/api/live/status", {
+            cookie: `bk_identity=${identityA}`,
+            hostHeader: `127.0.0.1:${addr2.port}`,
+          });
+          assert.equal(exhaustedStatus.status, 200);
+          assert.equal(exhaustedStatus.body.status, "disabled");
+          assert.deepEqual(exhaustedStatus.body.allowance, {
+            totalMax: 100,
+            totalUsed: 10,
+            sessionMax: 6,
+            sessionUsed: 6,
+            sessionRemaining: 0,
+            activeConcurrent: 0,
+          });
+
+          const otherStatus = await request("127.0.0.1", addr2.port, "GET", "/api/live/status", {
+            cookie: `bk_identity=${identityB}`,
+            hostHeader: `127.0.0.1:${addr2.port}`,
+          });
+          assert.equal(otherStatus.status, 200);
+          assert.equal(otherStatus.body.status, "available");
+          assert.deepEqual(otherStatus.body.allowance, {
+            totalMax: 100,
+            totalUsed: 10,
+            sessionMax: 6,
+            sessionUsed: 2,
+            sessionRemaining: 4,
+            activeConcurrent: 0,
+          });
+        } finally {
+          service2.close();
+          server2.close();
+        }
+
+        // Persist an unknown outcome and verify lock survives restart under 100/6
+        const ledgerUnknown = new ReservationLedger(ledgerPath, 100, 6);
+        const reqBodyUnknown = JSON.stringify({ test: "unknown-lock" });
+        await ledgerUnknown.reserve({
+          idempotencyKey: "unknown_restart_0000001",
+          bodySha256: createHash("sha256").update(reqBodyUnknown).digest("hex"),
+          sessionId: lockedIdentity,
+          basisRevision: 1,
+          basisDigest: createHash("sha256").update("basis-unknown").digest("hex"),
+          requestBody: reqBodyUnknown,
+        });
+        await ledgerUnknown.recordTransition("unknown_restart_0000001", {
+          state: "unknown",
+          httpStatus: 202,
+          detail: "pending_202",
+        });
+
+        const service3 = new WorkspaceService();
+        const server3 = createServer(service3);
+        await new Promise<void>((resolve) => server3.listen(0, "127.0.0.1", resolve));
+        const addr3 = server3.address() as any;
+
+        try {
+          const lockedStatus = await request("127.0.0.1", addr3.port, "GET", "/api/live/status", {
+            cookie: `bk_identity=${lockedIdentity}`,
+            hostHeader: `127.0.0.1:${addr3.port}`,
+          });
+          assert.equal(lockedStatus.status, 200);
+          assert.equal(lockedStatus.body.status, "unknown");
+          assert.equal(lockedStatus.body.allowance.totalMax, 100);
+          assert.equal(lockedStatus.body.allowance.totalUsed, 11);
+          assert.equal(lockedStatus.body.allowance.sessionMax, 6);
+          assert.equal(lockedStatus.body.allowance.sessionUsed, 1);
+          assert.equal(lockedStatus.body.allowance.sessionRemaining, 5);
+        } finally {
+          service3.close();
+          server3.close();
+        }
+
+        // Persist an unfinalized active reservation and verify one-active concurrency under 100/6
+        const ledgerBusy = new ReservationLedger(ledgerPath, 100, 6);
+        const reqBodyBusy = JSON.stringify({ test: "active-concurrency" });
+        await ledgerBusy.reserve({
+          idempotencyKey: "active_restart_00000001",
+          bodySha256: createHash("sha256").update(reqBodyBusy).digest("hex"),
+          sessionId: busyIdentity,
+          basisRevision: 1,
+          basisDigest: createHash("sha256").update("basis-busy").digest("hex"),
+          requestBody: reqBodyBusy,
+        });
+
+        const service4 = new WorkspaceService();
+        const server4 = createServer(service4);
+        await new Promise<void>((resolve) => server4.listen(0, "127.0.0.1", resolve));
+        const addr4 = server4.address() as any;
+
+        try {
+          const busyStatus = await request("127.0.0.1", addr4.port, "GET", "/api/live/status", {
+            cookie: `bk_identity=${identityB}`,
+            hostHeader: `127.0.0.1:${addr4.port}`,
+          });
+          assert.equal(busyStatus.status, 200);
+          assert.equal(busyStatus.body.status, "busy");
+          assert.equal(busyStatus.body.active, true);
+          assert.equal(busyStatus.body.allowance.activeConcurrent, 1);
+          assert.equal(busyStatus.body.allowance.totalMax, 100);
+          assert.equal(busyStatus.body.allowance.totalUsed, 12);
+          assert.equal(busyStatus.body.allowance.sessionMax, 6);
+        } finally {
+          service4.close();
+          server4.close();
+        }
+      }
+    );
+  });
+
+  test("createServer preserves explicitly injected controller and ignores request limit parameters", async () => {
+    await withEnv(
+      {
+        BLACKOUT_MAX_TOTAL_ATTEMPTS: "100",
+        BLACKOUT_MAX_BROWSER_ATTEMPTS: "6",
+      },
+      async () => {
+        const client = new HostedReviewClient({
+          clientId: "test_client_id",
+          clientSecret: "test_client_secret",
+          ledgerPath,
+          fetch: async () => new Response("Not found", { status: 404 }),
+        });
+        await client.init();
+        const injectedController = new HostedController({ client });
+        const service = new WorkspaceService(injectedController);
+        const server = createServer(service, injectedController);
+        await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+        const addr = server.address() as any;
+
+        try {
+          const res = await request(
+            "127.0.0.1",
+            addr.port,
+            "GET",
+            "/api/live/status?maxTotalAttempts=100&maxBrowserAttempts=6",
+            {
+              hostHeader: `127.0.0.1:${addr.port}`,
+            }
+          );
+          assert.equal(res.status, 200);
+          assert.equal(res.body.allowance.totalMax, 10);
+          assert.equal(res.body.allowance.sessionMax, 2);
+        } finally {
+          service.close();
+          server.close();
+        }
+      }
+    );
+
+    // Default controller with env limits absent ignores request query params and uses 10/2 defaults
+    await withEnv(
+      {
+        BLACKOUT_MAX_TOTAL_ATTEMPTS: undefined,
+        BLACKOUT_MAX_BROWSER_ATTEMPTS: undefined,
+      },
+      async () => {
+        const defaultService = new WorkspaceService();
+        const defaultServer = createServer(defaultService);
+        await new Promise<void>((resolve) => defaultServer.listen(0, "127.0.0.1", resolve));
+        const addr = defaultServer.address() as any;
+
+        try {
+          const res = await request(
+            "127.0.0.1",
+            addr.port,
+            "GET",
+            "/api/live/status?maxTotalAttempts=100&maxBrowserAttempts=6",
+            {
+              hostHeader: `127.0.0.1:${addr.port}`,
+            }
+          );
+          assert.equal(res.status, 200);
+          assert.equal(res.body.allowance.totalMax, 10);
+          assert.equal(res.body.allowance.sessionMax, 2);
+        } finally {
+          defaultService.close();
+          defaultServer.close();
+        }
+      }
+    );
+  });
+
+  test("createServer rejects invalid limit env configuration with fixed sanitized error", async () => {
+    await withEnv(
+      {
+        BLACKOUT_MAX_TOTAL_ATTEMPTS: "4",
+        BLACKOUT_MAX_BROWSER_ATTEMPTS: "6",
+      },
+      async () => {
+        const service = new WorkspaceService();
+        try {
+          assert.throws(() => createServer(service), {
+            message: INVALID_ATTEMPT_LIMITS_ERROR,
+          });
+        } finally {
+          service.close();
+        }
+      }
+    );
+
+    await withEnv(
+      {
+        BLACKOUT_MAX_TOTAL_ATTEMPTS: "CANARY_INVALID_LIMIT_777",
+        BLACKOUT_MAX_BROWSER_ATTEMPTS: "2",
+      },
+      async () => {
+        const service = new WorkspaceService();
+        let caught: Error | undefined;
+        try {
+          createServer(service);
+        } catch (err) {
+          caught = err as Error;
+        } finally {
+          service.close();
+        }
+        assert.ok(caught);
+        assert.equal(caught.message, INVALID_ATTEMPT_LIMITS_ERROR);
+        assert.ok(!caught.message.includes("CANARY_INVALID_LIMIT_777"));
+      }
+    );
   });
 });
