@@ -1,0 +1,99 @@
+{
+  "revision": 78,
+  "basisDigest": "8f3b7a38db8cb10ede0df2e70122a214ee9995e0cd954e34fbe521d8b3fef33f",
+  "status": "closed",
+  "labels": {
+    "telemetryType": "measured process telemetry",
+    "resourceType": "managed SQLite handles",
+    "workloadType": "fictional workload",
+    "distinction": "measured local process rig, not deterministic model prediction or hosted Evaluate"
+  },
+  "measuredCounters": {
+    "admittedJobs": 24,
+    "pendingJobs": 0,
+    "inFlightJobs": 0,
+    "completedJobs": 24,
+    "failedJobs": 0,
+    "unknownJobs": 0,
+    "activeWorkers": 0,
+    "pausedWorkers": 0,
+    "workerPids": [],
+    "managedSqliteHandles": 0,
+    "maxDbHandleBudget": 100,
+    "ingestionCapped": false,
+    "pressureInjected": true,
+    "ingestionPort": 0
+  },
+  "dbBudget": {
+    "maxDbHandleBudget": 100,
+    "currentManagedHandles": 0,
+    "parentReservedHandles": 0,
+    "workerHandles": 0
+  },
+  "workers": [
+    {
+      "workerId": "worker-1",
+      "pid": 13986,
+      "paused": false,
+      "handles": 0,
+      "exited": true
+    }
+  ],
+  "queueSummary": {
+    "total": 24,
+    "pending": 0,
+    "inFlight": 0,
+    "completed": 24,
+    "failed": 0,
+    "unknown": 0
+  },
+  "receipts": [
+    {
+      "actionId": "rig-act-resume-worker-r27-060850cc",
+      "actionType": "resume-worker",
+      "revisionBefore": 27,
+      "digestBefore": "c0b266358f4ceaf9ba9e5e43693467939adc9e454295be1ccc5d7f4960bb649c",
+      "revisionAfter": 29,
+      "digestAfter": "9eb3dcdad58112a4086a526b2c539b9bc09c834708eff81524a55ca79b393eab",
+      "appliedAt": 1794954416067,
+      "measuredBefore": {
+        "admittedJobs": 24,
+        "pendingJobs": 24,
+        "inFlightJobs": 0,
+        "completedJobs": 0,
+        "failedJobs": 0,
+        "unknownJobs": 0,
+        "activeWorkers": 0,
+        "pausedWorkers": 1,
+        "workerPids": [
+          13986
+        ],
+        "managedSqliteHandles": 94,
+        "maxDbHandleBudget": 100,
+        "ingestionCapped": false,
+        "pressureInjected": true,
+        "ingestionPort": 58463
+      },
+      "measuredAfter": {
+        "admittedJobs": 24,
+        "pendingJobs": 23,
+        "inFlightJobs": 1,
+        "completedJobs": 0,
+        "failedJobs": 0,
+        "unknownJobs": 0,
+        "activeWorkers": 1,
+        "pausedWorkers": 0,
+        "workerPids": [
+          13986
+        ],
+        "managedSqliteHandles": 94,
+        "maxDbHandleBudget": 100,
+        "ingestionCapped": false,
+        "pressureInjected": true,
+        "ingestionPort": 58463
+      },
+      "labNote": "measured local process rig, zero hosted calls"
+    }
+  ],
+  "exportedAt": "2026-11-17T22:26:59.937Z"
+}

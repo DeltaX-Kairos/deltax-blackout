@@ -1,0 +1,37 @@
+{
+  "name": "deltax-blackout",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Incident recovery lab with evidence-bound local execution",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=22.23.2"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "demo": "tsc && node dist/src/cli.js",
+    "demo:queue-storm": "tsc && node dist/src/cli.js --scenario queue-storm --seed 42",
+    "demo:db-pressure": "tsc && node dist/src/cli.js --scenario database-pressure --seed 99",
+    "server": "tsc && node dist/src/server.js",
+    "test": "tsc && node --require ./tests/offline-fetch-guard.cjs --test --test-timeout=15000 dist/tests/*.test.js",
+    "test:invariants": "tsc && node --test dist/tests/invariants.test.js",
+    "test:unit": "tsc && node --test dist/tests/unit.test.js",
+    "test:workspace": "tsc && node --test dist/tests/workspace.test.js",
+    "test:capacity": "tsc && node --test dist/tests/capacity.test.js",
+    "test:hosted": "tsc && node --require ./tests/offline-fetch-guard.cjs --test --test-timeout=15000 dist/tests/hosted.test.js dist/tests/hosted-workspace.test.js",
+    "test:rig": "tsc && node --test --test-timeout=15000 dist/tests/rig.test.js dist/tests/rig-workspace.test.js",
+    "test:mcp": "tsc && node --require ./tests/offline-fetch-guard.cjs --test --test-timeout=15000 dist/tests/mcp.test.js"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.4.0",
+    "@types/node": "^22.0.0",
+    "fast-check": "^3.22.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.4.0",
+    "zod": "4.3.6"
+  }
+}

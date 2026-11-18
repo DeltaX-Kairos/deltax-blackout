@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Blackout — Incident Recovery Lab</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+
+<!-- Accessible live region for screen reader announcements -->
+<div id="announce" aria-live="polite" aria-atomic="true"></div>
+
+<!-- ─── Setup screen ──────────────────────────────────────────────────────── -->
+<div id="setup-screen" role="main" aria-labelledby="setup-heading">
+  <div class="setup-card">
+    <h2 id="setup-heading">Blackout — Incident Recovery Lab</h2>
+    <p>
+      A deterministic incident simulation. Observe state at each tick,
+      inspect scripted candidates, stage an action, inject pressure to see
+      a stale-basis rejection, then confirm the current lab action and plot
+      recovery. All workload is explicitly simulated.
+    </p>
+
+    <div class="form-group">
+      <label for="scenario-select">Scenario</label>
+      <select id="scenario-select" aria-required="true">
+        <option value="queue-storm">Queue Storm — API gateway overload</option>
+        <option value="database-pressure">Database Pressure — replica saturation</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="seed-input">Seed (integer)</label>
+      <input id="seed-input" type="number" value="42" min="0" step="1"
+             aria-required="true" aria-describedby="seed-hint" />
+      <span id="seed-hint" style="font-size:0.65rem;color:var(--warm-dim)">
+        Same seed + scenario produces an identical run.
+      </span>
+    </div>
+
+    <div class="form-group">
+      <label for="tick-limit-input">Tick limit</label>
+      <input id="tick-limit-input" type="number" value="30" min="5" max="120" step="1" />
+    </div>
+
+    <button class="btn btn-primary" id="start-btn" type="button">
+      Start lab session
+    </button>
+    <div id="setup-error" role="alert" style="font-size:0.75rem;color:var(--red);min-height:1.2em;"></div>
+    <div style="margin-top:1rem;padding-top:0.75rem;border-top:1px solid var(--ink-border);font-size:0.75rem;color:var(--warm-dim);">
+      Separate lab surface:
+      <a href="/rig/" style="color:var(--teal);text-decoration:underline;" target="_blank" rel="noopener">
+        Measured worker rig ↗
+      </a>
+      (standalone manual process lab with managed SQLite handles; zero hosted calls).
+    </div>
+  </div>
+</div>
+
+<!-- ─── Workspace (hidden until session created) ───────────────────────────── -->
+<div id="app" hidden aria-label="Incident Recovery Workspace">
+
+  <!-- Header -->
+  <header id="header" role="banner">
+    <div class="header-main">
+      <h1>Blackout — Incident Recovery Lab</h1>
+      <span class="header-context">Recovery actions can expire while the incident changes.</span>
+    </div>
+    <div class="header-controls">
+      <a href="/rig/" class="btn btn-secondary" id="rig-nav-btn" target="_blank" rel="noopener"
+         aria-label="Open Measured worker rig (separate manual process lab, zero hosted calls)">
+        Measured worker rig ↗
+      </a>
+      <span id="scenario-badge" class="scenario-badge" aria-label="Active scenario"></span>
+      <span id="revision-badge" class="revision-badge" aria-label="Current revision and tick"></span>
+      <span id="status-badge" class="scenario-badge" style="border-color:var(--teal-dim);background:var(--teal-bg);color:var(--teal);" aria-label="Scenario status">running</span>
+      <button class="btn btn-secondary" id="new-session-btn" type="button"
+              aria-label="Start a new lab session (resets current run)">New session</button>
+    </div>
+  </header>
+
+  <!-- Workflow step progression bar -->
+  <nav class="workflow-steps" aria-label="Recovery workflow steps">
+    <span class="step step-observe active" id="step-observe"><span class="step-num">1</span> Observe</span>
+    <span class="step-arrow" aria-hidden="true">→</span>
+    <span class="step step-review" id="step-review"><span class="step-num">2</span> Review</span>
+    <span class="step-arrow" aria-hidden="true">→</span>
+    <span class="step step-recheck" id="step-recheck"><span class="step-num">3</span> Recheck</span>
+    <span class="step-arrow" aria-hidden="true">→</span>
+    <span class="step step-apply" id="step-apply"><span class="step-num">4</span> Apply</span>
+    <span class="step-arrow" aria-hidden="true">→</span>
+    <span class="step step-measure" id="step-measure"><span class="step-num">5</span> Measure</span>
+  </nav>
+
+  <!-- Main workspace -->
+  <main id="main" aria-label="Lab workspace">
+
+    <!-- Left pane: topology + metrics + observation history -->
+    <section id="pane-left" aria-label="Service topology and metrics">
+
+      <!-- Topology -->
+      <div class="panel" id="topology-panel">
+        <div class="panel-title" id="topology-title">Service topology (simulated)</div>
+        <div id="topology-view" class="topology" role="img" aria-labelledby="topology-title"></div>
+      </div>
+
+      <!-- Metrics -->
+      <div class="panel" id="metrics-panel">
+        <div class="panel-title">Operational metrics</div>
+        <div id="metrics-grid" class="metrics-grid" aria-live="polite" aria-atomic="true"></div>
+      </div>
+
+      <!-- Chronological Observation History Charts -->
+      <div class="panel" id="history-panel">
+        <div class="panel-title">Observation history (chronological snapshots)</div>
+        <div class="history-charts-wrap">
+          <div class="chart-card">
+            <div class="chart-header">
+              <span class="chart-label" id="backlog-chart-title">Backlog</span>
+              <span class="chart-unit" id="backlog-chart-unit">msgs</span>
+            </div>
+            <div id="backlog-chart" class="chart-viewport" role="img" aria-label="Chronological backlog history line chart"></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-header">
+              <span class="chart-label">Error rate</span>
+              <span class="chart-unit">%</span>
+            </div>
+            <div id="error-chart" class="chart-viewport" role="img" aria-label="Chronological error rate history line chart"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- State digest -->
+      <div class="panel">
+        <div class="panel-title">Basis digest &amp; revision</div>
+        <div id="digest-view" style="font-size:0.68rem;font-family:var(--font-mono);color:var(--warm-dim);word-break:break-all;"></div>
+      </div>
+
+      <!-- Tick control -->
+      <div class="panel">
+        <div class="panel-title">Tick control</div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+          <button class="btn btn-secondary" id="tick-btn" type="button"
+                  aria-label="Advance one simulation tick">
+            Advance tick
+          </button>
+          <button class="btn btn-secondary" id="observe-btn" type="button"
+                  aria-label="Refresh current observation from server">
+            Refresh observe
+          </button>
+          <button class="btn btn-secondary" id="inject-btn" type="button"
+                  aria-label="Inject simulated incident pressure (DB connections / replica loss) to demonstrate stale-basis">
+            Inject pressure
+          </button>
+          <span id="tick-counter" style="font-size:0.75rem;font-family:var(--font-mono);color:var(--warm-dim)"></span>
+        </div>
+        <div style="font-size:0.68rem;color:var(--warm-dim);margin-top:0.4rem;">
+          Inject pressure changes state — any staged action becomes stale. Re-propose after injection to get a fresh candidate against the new constraints.
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Right pane: decision workbench -->
+    <section id="pane-right" aria-label="Decision workbench">
+
+      <!-- Proposals -->
+      <div class="panel">
+        <div class="panel-title">Candidate proposals</div>
+        <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;flex-wrap:wrap;">
+          <button class="btn btn-primary" id="propose-btn" type="button"
+                  aria-label="Generate scripted proposals for the current state">
+            Generate proposals
+          </button>
+        </div>
+        <div id="proposals-list" role="list" aria-label="Candidate proposals"></div>
+      </div>
+
+      <!-- DeltaX Evaluate slot -->
+      <div class="panel" id="evaluate-panel">
+        <div class="panel-title">DeltaX Evaluate — Hosted Review</div>
+        <div class="evaluate-card">
+          <div class="evaluate-header">
+            <span id="evaluate-status-badge" class="eval-badge eval-unconfigured">Local demo</span>
+            <span id="evaluate-allowance" class="eval-allowance" aria-label="Evaluation budget allowance"></span>
+          </div>
+          <div id="evaluate-body" class="evaluate-body">
+            <div class="uc-slot">
+              Local demo (fictional lab mode) — no hosted review configured. Actions stage directly with operator confirmation.
+            </div>
+          </div>
+          <div style="margin-top:0.6rem;">
+            <button class="btn btn-primary" id="evaluate-btn" type="button" style="display:none;"
+                    aria-label="Request hosted review of eligible candidate proposals">
+              Request hosted review
+            </button>
+          </div>
+          <div style="font-size:0.68rem;color:var(--warm-dim);margin-top:0.45rem;">
+            Separate surface: <a href="/rig/" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:underline;">Measured worker rig ↗</a> is an explicit separate manual lab (zero hosted calls), not a fallback from refusal.
+          </div>
+        </div>
+      </div>
+
+      <!-- Staged action -->
+      <div class="panel" id="staging-panel">
+        <div class="panel-title">Staged action</div>
+        <div id="staging-area" class="staging-area">
+          <p style="font-size:0.75rem;color:var(--warm-dim)">
+            Select a proposal, inspect feasibility, then confirm to stage.
+          </p>
+        </div>
+        <div style="display:flex;gap:0.5rem;margin-top:0.75rem;flex-wrap:wrap;">
+          <button class="btn btn-primary" id="execute-btn" type="button" disabled
+                  aria-label="Confirm and apply the staged action against current state">
+            Confirm and apply lab action
+          </button>
+        </div>
+        <div id="exec-result" aria-live="assertive" aria-atomic="true"></div>
+      </div>
+
+      <!-- Evidence export -->
+      <div class="panel">
+        <div class="panel-title">Evidence export</div>
+        <p style="font-size:0.75rem;color:var(--warm-dim);margin-bottom:0.6rem;">
+          Downloads a session-scoped JSON bundle. Every event and proposal source
+          is labelled. Captures telemetry snapshots and review records.
+        </p>
+        <a id="evidence-link" class="btn btn-secondary" href="/api/evidence"
+           download="blackout-evidence.json"
+           aria-label="Download evidence bundle as JSON">
+          Download evidence bundle
+        </a>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Evidence timeline -->
+  <footer id="timeline-panel" aria-label="Evidence timeline">
+    <div class="timeline-title">Evidence timeline</div>
+    <ul id="timeline-list" class="timeline-list" role="list" aria-label="Lab events"></ul>
+  </footer>
+
+  <!-- Bottom status bar -->
+  <div id="status-bar" role="status" aria-live="polite" aria-atomic="true">
+    <span id="status-msg">Ready</span>
+  </div>
+
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>

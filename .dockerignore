@@ -1,0 +1,25 @@
+# Version control
+.git
+.gitignore
+
+# Dependencies & build outputs
+node_modules
+dist
+
+# Private runtime state & credentials
+.blackout-private
+.env*
+*.local.env
+
+# Media, recordings, and private test artifacts
+captures
+video
+privateartifacts
+artifacts
+logs
+*.log
+
+# Editor & agent configurations (not needed in container)
+.kiro
+.vscode
+.idea

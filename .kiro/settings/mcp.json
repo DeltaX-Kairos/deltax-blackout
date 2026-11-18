@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "blackout-observer": {
+      "command": "node",
+      "args": [
+        "dist/src/mcp-observer.js"
+      ],
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}

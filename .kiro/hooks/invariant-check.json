@@ -1,0 +1,14 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "invariant-check",
+      "trigger": "PostFileSave",
+      "matcher": "(^|/)src/.*\\.ts$",
+      "action": {
+        "type": "command",
+        "command": "node node_modules/typescript/bin/tsc && node --test dist/tests/invariants.test.js"
+      }
+    }
+  ]
+}

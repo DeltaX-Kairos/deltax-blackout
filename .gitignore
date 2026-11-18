@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+
+# Credential artifacts
+credentials.json
+*.key
+*.pem
+
+# Keep Kiro configuration tracked
+!.kiro/
+
+# Runtime request bodies/receipts and local credentials never enter source.
+.blackout-private/
+
+# Private recording and release review outputs
+artifacts/
