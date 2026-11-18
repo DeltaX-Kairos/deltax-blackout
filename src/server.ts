@@ -56,7 +56,11 @@ import {
 } from "./workspace-service.js";
 import { ApprovalError } from "./recovery-core.js";
 import { HostedController } from "./hosted-controller.js";
-import { resolvePublicOrigin, deploymentCookieSecure } from "./release-config.js";
+import {
+  resolvePublicOrigin,
+  deploymentCookieSecure,
+  resolveHostedAttemptLimits,
+} from "./release-config.js";
 import type { ScenarioName } from "./recovery-core.js";
 import type { IncidentInjectionKind } from "./types.js";
 
@@ -279,9 +283,16 @@ export function createServer(
   const CSRF_HEADER = "x-csrf-token";
   const publicOrigin = resolvePublicOrigin(process.env.BLACKOUT_PUBLIC_ORIGIN);
   const secureCookies = deploymentCookieSecure(publicOrigin);
+  const attemptLimits = resolveHostedAttemptLimits(process.env);
 
   // Use injected controller, existing service controller, or default to new HostedController
-  const controller = hostedController ?? service.hostedController ?? new HostedController();
+  const controller =
+    hostedController ??
+    service.hostedController ??
+    new HostedController({
+      maxAttempts: attemptLimits.maxTotalAttempts,
+      maxPerSession: attemptLimits.maxBrowserAttempts,
+    });
   service.setHostedController(controller);
 
   // Use injected rig workspace or attempt to load from ./rig/workspace.js if present

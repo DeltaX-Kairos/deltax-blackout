@@ -1,6 +1,8 @@
 # Judges: one decision expires; another gets checked
 
-Status: private review build. The public URL and video will be filled only after approved publication and native verification.
+[Open the live workspace](https://blackout.deltaxevaluate.com/) · [Watch the uninterrupted 2:27 demonstration](https://www.youtube.com/watch?v=jLotIWJG7CU) · [Public source](https://github.com/DeltaX-Kairos/deltax-blackout)
+
+Use the dedicated judge login provided privately with the entry. The source and recording are public; no API credential is required from a judge. This is fictional incident data. The hosted deployment has been rehearsed end to end.
 
 ## Two-minute path
 
@@ -10,7 +12,7 @@ With hosted access enabled, request the review. Inspect its real receipt and the
 
 Inject database pressure. Current connections become94and the state digest changes. Attempt the old stage and inspect the stale rejection. Refresh proposals: scale-up now needs118/100connections. Review the feasible cap, confirm its exact effect, advance three ticks and inspect the model history. Export the session evidence.
 
-The entire hosted path uses two application reservations. A browser's two-attempt limit is distinct from provider failure. If live allowance is unavailable, use the approved uninterrupted recording and run the default no-provider local model; do not interpret a synthetic response as a hosted result.
+The entire hosted path uses two application reservations. Judging access permits six reviews per persistent browser identity (three complete walkthroughs) within 100 cumulative reservations, including history. One request is active globally and unknown outcomes remain counted. A browser limit is distinct from provider failure. If live allowance is unavailable, watch the linked uninterrupted recording or reproduce the explicitly labelled default no-provider model locally; the public configured app never silently falls back to a synthetic provider result.
 
 ## Measured rig
 

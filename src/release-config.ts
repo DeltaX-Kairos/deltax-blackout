@@ -1,5 +1,6 @@
 /**
- * Release configuration and public origin validation for DeltaX Blackout.
+ * Release configuration, public origin validation, and hosted attempt limit
+ * resolution for DeltaX Blackout.
  *
  * Implements strict canonical HTTPS origin resolution per docs/RELEASE-CONFIG-014.md:
  * - Empty / unset inputs resolve to null.
@@ -8,12 +9,34 @@
  *   localhost/loopback domains, and IP literals (IPv4 and IPv6).
  * - Fails closed with a fixed sanitized configuration error without echoing raw input.
  * - Node built-ins URL and net only. No network lookups or hostname guessing.
+ *
+ * Also implements strict operator-only hosted attempt limit resolution:
+ * - BLACKOUT_MAX_TOTAL_ATTEMPTS: valid canonical decimal 1..100 (default 10 when absent)
+ * - BLACKOUT_MAX_BROWSER_ATTEMPTS: valid canonical decimal 1..6 (default 2 when absent)
+ * - Rejects empty, malformed, whitespace, fraction, exponent, zero, negative,
+ *   out-of-range values, and browser > total with one fixed sanitized error
+ *   that never echoes raw input.
  */
 
 import * as net from "node:net";
 
 export const INVALID_ORIGIN_ERROR =
   "Invalid public origin configuration: must be a canonical HTTPS domain origin without credentials, path, query, fragment, non-443 port, or IP/localhost.";
+
+export const DEFAULT_MAX_TOTAL_ATTEMPTS = 10;
+export const DEFAULT_MAX_BROWSER_ATTEMPTS = 2;
+export const MAX_TOTAL_ATTEMPTS_CEILING = 100;
+export const MAX_BROWSER_ATTEMPTS_CEILING = 6;
+
+export const INVALID_ATTEMPT_LIMITS_ERROR =
+  "Invalid hosted attempt limit configuration: BLACKOUT_MAX_TOTAL_ATTEMPTS must be 1..100, BLACKOUT_MAX_BROWSER_ATTEMPTS must be 1..6, and browser attempts must not exceed total attempts.";
+
+export interface HostedAttemptLimits {
+  maxTotalAttempts: number;
+  maxBrowserAttempts: number;
+}
+
+const CANONICAL_POSITIVE_DECIMAL_RE = /^[1-9][0-9]*$/;
 
 /**
  * Resolves and validates a server-operator-supplied public origin environment variable.
@@ -146,4 +169,58 @@ export function deploymentCookieSecure(origin: string | null): boolean {
     return false;
   }
   return origin.startsWith("https://");
+}
+
+function parseCanonicalAttemptLimit(
+  raw: string | undefined,
+  defaultValue: number,
+  maxAllowed: number
+): number {
+  if (raw === undefined) {
+    return defaultValue;
+  }
+  if (typeof raw !== "string" || !CANONICAL_POSITIVE_DECIMAL_RE.test(raw)) {
+    throw new Error(INVALID_ATTEMPT_LIMITS_ERROR);
+  }
+  const parsed = Number(raw);
+  if (!Number.isSafeInteger(parsed) || parsed < 1 || parsed > maxAllowed) {
+    throw new Error(INVALID_ATTEMPT_LIMITS_ERROR);
+  }
+  return parsed;
+}
+
+/**
+ * Resolves and validates operator-only hosted review attempt limits from environment variables.
+ *
+ * - BLACKOUT_MAX_TOTAL_ATTEMPTS: canonical decimal 1..100 (default 10 when absent)
+ * - BLACKOUT_MAX_BROWSER_ATTEMPTS: canonical decimal 1..6 (default 2 when absent)
+ * - Rejects empty, malformed, whitespace, fraction, exponent, zero, negative,
+ *   out-of-range values, and browser > total with one fixed sanitized error.
+ */
+export function resolveHostedAttemptLimits(
+  env: NodeJS.ProcessEnv | Record<string, string | undefined> = process.env
+): HostedAttemptLimits {
+  if (!env || typeof env !== "object") {
+    throw new Error(INVALID_ATTEMPT_LIMITS_ERROR);
+  }
+
+  const maxTotalAttempts = parseCanonicalAttemptLimit(
+    env.BLACKOUT_MAX_TOTAL_ATTEMPTS,
+    DEFAULT_MAX_TOTAL_ATTEMPTS,
+    MAX_TOTAL_ATTEMPTS_CEILING
+  );
+  const maxBrowserAttempts = parseCanonicalAttemptLimit(
+    env.BLACKOUT_MAX_BROWSER_ATTEMPTS,
+    DEFAULT_MAX_BROWSER_ATTEMPTS,
+    MAX_BROWSER_ATTEMPTS_CEILING
+  );
+
+  if (maxBrowserAttempts > maxTotalAttempts) {
+    throw new Error(INVALID_ATTEMPT_LIMITS_ERROR);
+  }
+
+  return {
+    maxTotalAttempts,
+    maxBrowserAttempts,
+  };
 }

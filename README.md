@@ -4,7 +4,11 @@
 
 A recovery rehearsal for platform engineers: hosted DeltaX Evaluate selects bounded verification work; the application rechecks the current evidence, requires human confirmation, applies one exact lab effect and records the outcome.
 
-**Private review build:** 290 automated checks pass. Four actual hosted reviews completed, including the two in the final uninterrupted **2:27 review video**. The stale-decision/recovery flow and the measured rig’s 24-job drain and cleanup are verified. Public hosting, source disclosure and contest submission await approval.
+**Judging:** [Live workspace](https://blackout.deltaxevaluate.com/) · [Uninterrupted 2:27 demo](https://www.youtube.com/watch?v=jLotIWJG7CU) · [Judge click path](docs/JUDGES.md)
+
+The live workspace requires the dedicated login supplied privately to judges. Public source is MIT licensed. The original video retains one uninterrupted, normal-speed browser take with a fixed library narrator and English captions.
+
+**Verified release:** six actual hosted reviews completed, including two through the public HTTPS deployment. The fresh public rehearsal reproduced stale-action rejection, a resource-gated recovery and a 24-job measured drain with confirmed worker termination and zero handles. [Deployment evidence and current access policy](docs/HOSTED-RELEASE.md). Contest registration and submission remain separate from this application release.
 
 - [Judge click path](docs/JUDGES.md)
 - [Architecture and execution boundaries](docs/ARCHITECTURE.md)
@@ -48,7 +52,7 @@ Caps: one rig per application process, four workers, 64 jobs, 120 seconds, 100 m
 
 ## Hosted integration
 
-Use the [customer gateway contract](https://deltaxevaluate.com/developers/evaluate/account-reference.md). The app does not require or expose engine source. Credentials stay on the server. Local verification used a dedicated credential and a ten-attempt application allowance, including history, unknowns and errors; two attempts per persistent browser identity and one globally active request. There are no automatic retries.
+Use the [customer gateway contract](https://deltaxevaluate.com/developers/evaluate/account-reference.md). The app does not require or expose engine source. Credentials stay on the server. The judging deployment uses a dedicated credential and a 100-review cumulative application allowance, including prior history, unknowns and errors; six attempts per persistent browser identity and one globally active request. Development defaults remain ten/two. There are no automatic retries. The account gateway quota is a separate limit; resetting it does not erase this application ledger.
 
 Build first, explicitly initialize a new private ledger, then supply credentials through a private environment file:
 
@@ -67,8 +71,10 @@ Kiro CLI authored the original specifications, recovery core, workspace and inva
 
 Root `.kiro` contains the actual specifications, steering and hooks. The project-local MCP observer exposes three read-only tools over a clearly labelled recorded fictional fixture. Nine official-client protocol tests exercise those tools; this does not claim a Kiro model tool call after quota exhaustion. [Build evidence](docs/KIRO-EVIDENCE.md) records the distinction.
 
-## Judge hosting preparation
+## Judge hosting
 
-The application remains loopback-only. `BLACKOUT_PUBLIC_ORIGIN` optionally allows one validated HTTPS origin and enables Secure cookies for a TLS reverse proxy. `deployment/Caddyfile.example` adds private jury authentication while preserving Host/Origin checks. The Docker recipe is prepared but has not been built locally; direct Node operation is verified. No server, DNS record or judge password has been created for Blackout.
+The public HTTPS deployment runs on one AWS Lightsail Ubuntu host using existing Free-plan credits, with Caddy judge authentication, Secure cookies and strict Host/Origin checks. Node listens on loopback; credentials and the durable ledger remain private. Retention is approved through January 29, 2027, 1 PM Pacific. The local preview was stopped before ledger migration so there is one active allowance authority.
+
+Server operators may set `BLACKOUT_MAX_TOTAL_ATTEMPTS=100` and `BLACKOUT_MAX_BROWSER_ATTEMPTS=6`. Unset values retain development defaults; malformed or out-of-range values fail closed. Clients cannot choose these limits. The Docker recipe remains prepared but unbuilt; the deployed direct Node path is verified.
 
 MIT applies to this new application. DeltaX Evaluate is a pre-existing external service with separate access terms. No customer evidence, external usability study or production safety claim is asserted.

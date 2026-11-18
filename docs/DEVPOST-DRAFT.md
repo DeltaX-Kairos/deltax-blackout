@@ -1,6 +1,11 @@
 # Blackout — when a recovery decision expires
 
-Private submission draft. Live URL, public repository and public video are intentionally unset until approved and verified. Proposed category: Frankenstein.
+Prepared submission copy; not a registration or final submission. Proposed category: Frankenstein.
+
+- Working app: https://blackout.deltaxevaluate.com/ (dedicated judge login supplied privately)
+- Public source: https://github.com/DeltaX-Kairos/deltax-blackout
+- Public demo, 2:27: https://www.youtube.com/watch?v=jLotIWJG7CU
+- Judge walkthrough and access policy: [JUDGES.md](JUDGES.md)
 
 ## Inspiration
 
@@ -30,7 +35,7 @@ After Kiro reached its monthly usage limit, Antigravity completed the integratio
 
 ## Challenges and observed results
 
-The complete offline suite passes 290 tests. Four authorized local hosted reviews completed; the final uninterrupted 2:27 take contains two of them, a stale-action rejection and a fresh recovery. Three ticks after the load cap, the model backlog moves from 4,800 to 4,615 and model error from 42.0% to 35.9%. Those are model outcomes, not a production benchmark or a measured isolated benefit of Evaluate.
+The complete offline suite passes 290 tests. Six authorized hosted reviews completed: four during local development and two through the public HTTPS deployment. The uninterrupted 2:27 video contains two of the original local reviews, a stale-action rejection and a fresh recovery; the public deployment rehearsal independently reproduced that path. Three ticks after the load cap, the model backlog moves from 4,800 to 4,615 and model error from 42.0% to 35.9%. Those are model outcomes, not a production benchmark or a measured isolated benefit of Evaluate.
 
 The application owns temporal history; the hosted service is pre-existing and external. Scripted support values are caller-reported fixture inputs, not model confidence. SHA-256 bindings detect changes within the application model; they are not signatures or independent attestation. The rig separates a trusted workload into a child process and is not an arbitrary-code sandbox.
 
